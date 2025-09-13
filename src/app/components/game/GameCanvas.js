@@ -272,7 +272,7 @@ export default function GameCanvas({ playing }) {
       let collidedIdx = -1;
 
       // Update lane line offset for animation (moves left with same speed as obstacles)
-      S.laneLineOffset += S.baseObstacleSpeed + boost;
+      S.laneLineOffset += boost;
       // Reset offset when it goes beyond the dash pattern length (36px total: 18px dash + 18px gap)
       if (S.laneLineOffset <= -36) {
         S.laneLineOffset = 0;
@@ -317,6 +317,7 @@ export default function GameCanvas({ playing }) {
           const push = S.x + PLAYER_SIZE / 2 - (o.x - o.width / 2);
           for (const ob of S.obstacles) ob.x += push;
           for (const co of S.collectibles) co.x += push;
+          S.laneLineOffset -= push;
         } else {
           if (S.y < oy) S.y = oy - o.height / 2 - PLAYER_SIZE / 2;
           else S.y = oy + o.height / 2 + PLAYER_SIZE / 2;
