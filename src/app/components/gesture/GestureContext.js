@@ -1,40 +1,38 @@
 "use client";
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { createContext, useContext, useMemo, useState, useCallback } from "react";
 
-/**
- * Available gestures; add more as you wire up your model.
- * Using strings keeps it flexible across components / networking.
- */
-export const GESTURES = {
-  NONE: "NONE",
-  MOVE_LEFT: "MOVE_LEFT",
-  MOVE_RIGHT: "MOVE_RIGHT",
-  JUMP: "JUMP",
-};
+/** Discrete lanes from your PoC */
+export const LANE = { UP: "up", FRONT: "front", DOWN: "down" };
 
 const GestureContext = createContext(null);
 
 export function GestureProvider({ children }) {
-  const listenersRef = useRef(new Set());
-  const [lastGesture, setLastGesture] = useState(GESTURES.NONE);
+  const [live, setLive] = useState(false);        // camera live?
+  const [handCount, setHandCount] = useState(0);  // # of detected hands
+  const [lane, setLane] = useState(LANE.FRONT);   // up/front/down
+  const [brush, setBrush] = useState(0);          // smoothed brushing impact (continuous)
 
-  const emitGesture = useCallback((gesture, extras = {}) => {
-    setLastGesture(gesture);
-    for (const cb of listenersRef.current) cb(gesture, extras);
-  }, []);
-
-  const subscribe = useCallback((cb) => {
-    listenersRef.current.add(cb);
-    return () => listenersRef.current.delete(cb);
-  }, []);
-
-  const value = useMemo(() => ({ lastGesture, emitGesture, subscribe }), [lastGesture, emitGesture, subscribe]);
+  const value = useMemo(
+    () => ({
+      // live camera state
+      live,
+      setLive,
+      // signals from detector
+      handCount,
+      setHandCount,
+      lane,
+      setLane,
+      brush,
+      setBrush,
+    }),
+    [live, handCount, lane, brush]
+  );
 
   return <GestureContext.Provider value={value}>{children}</GestureContext.Provider>;
 }
 
-export function useGestureBus() {
+export function useGesture() {
   const ctx = useContext(GestureContext);
-  if (!ctx) throw new Error("useGestureBus must be used within <GestureProvider>");
+  if (!ctx) throw new Error("useGesture must be used inside <GestureProvider>");
   return ctx;
 }
