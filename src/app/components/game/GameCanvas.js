@@ -2,6 +2,28 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useGesture, LANE } from "../gesture/GestureContext";
 
+// Vehicle image configuration - easily extensible
+const vehicleConfig = {
+  car: {
+    src: "/car.png",
+    type: "car",
+    mult: 2,
+    color: "#e84c3d",
+  },
+  truck: {
+    src: "/truck-kun.png",
+    type: "truck",
+    mult: 2.8,
+    color: "#e84c3d",
+  },
+  train: {
+    src: "/shinkansen.png", // No image, uses drawn graphics
+    type: "train",
+    mult: 6,
+    color: "#3498db",
+  },
+};
+
 /**
  * Canvas game ported from your PoC:
  * - 3 lanes + player disk
@@ -18,7 +40,8 @@ export default function GameCanvas({ playing }) {
   const live = gestureContext?.live ?? false;
   const laneRef = useRef(lane);
   const brushRef = useRef(brush);
-  const truckImageRef = useRef(null);
+  // Extensible vehicle image management system
+  const vehicleImagesRef = useRef({});
 
   useEffect(() => {
     laneRef.current = lane;
@@ -27,13 +50,20 @@ export default function GameCanvas({ playing }) {
     brushRef.current = brush;
   }, [brush]);
 
-  // Load truck-kun image
+  // Load all vehicle images
   useEffect(() => {
-    const img = new Image();
-    img.onload = () => {
-      truckImageRef.current = img;
-    };
-    img.src = "/truck-kun.png";
+    Object.entries(vehicleConfig).forEach(([key, config]) => {
+      if (config.src) {
+        const img = new Image();
+        img.onload = () => {
+          vehicleImagesRef.current[key] = img;
+        };
+        img.onerror = () => {
+          console.warn(`Failed to load vehicle image: ${config.src}`);
+        };
+        img.src = config.src;
+      }
+    });
   }, []);
 
   const canvasRef = useRef(null);
@@ -89,19 +119,37 @@ export default function GameCanvas({ playing }) {
     return () => clearInterval(t);
   }, [playing]);
 
-  const createObstacle = useCallback((initialX, S) => {
-    const spec = obstacleSpec();
-    const lane = S.lanes[Math.floor(Math.random() * S.lanes.length)];
-    const width = OBSTACLE_HEIGHT * spec.mult;
+  const obstacleSpec = useCallback(() => {
+    // Use the vehicle configuration for consistent specs
+    const vehicleKeys = Object.keys(vehicleConfig);
+    const randomKey =
+      vehicleKeys[Math.floor(Math.random() * vehicleKeys.length)];
+    const config = vehicleConfig[randomKey];
     return {
-      lane,
-      x: initialX + width,
-      height: OBSTACLE_HEIGHT,
-      width,
-      color: spec.color,
-      type: spec.type,
+      type: config.type,
+      mult: config.mult,
+      color: config.color,
+      vehicleKey: randomKey, // Store the key for image lookup
     };
   }, []);
+
+  const createObstacle = useCallback(
+    (initialX, S) => {
+      const spec = obstacleSpec();
+      const lane = S.lanes[Math.floor(Math.random() * S.lanes.length)];
+      const width = OBSTACLE_HEIGHT * spec.mult;
+      return {
+        lane,
+        x: initialX + width,
+        height: OBSTACLE_HEIGHT,
+        width,
+        color: spec.color,
+        type: spec.type,
+        vehicleKey: spec.vehicleKey, // Store the vehicle key for image lookup
+      };
+    },
+    [obstacleSpec]
+  );
 
   // build a new level whenever we (re)start
   useEffect(() => {
@@ -123,15 +171,6 @@ export default function GameCanvas({ playing }) {
       if (c) S.collectibles.push(c);
     }
   }, [playing, createObstacle]);
-
-  function obstacleSpec() {
-    const types = [
-      { type: "car", mult: 2, color: "#e84c3d" },
-      { type: "truck", mult: 3, color: "#e84c3d" }, // Changed to red
-      { type: "train", mult: 4, color: "#3498db" },
-    ];
-    return types[Math.floor(Math.random() * types.length)];
-  }
 
   function createCollectible(initialX, S) {
     let tries = 0;
@@ -305,48 +344,43 @@ export default function GameCanvas({ playing }) {
         const oy = cy - o.height / 2;
         ctx.fillStyle = o.color;
 
-        if (o.type === "car") {
-          ctx.fillRect(ox, oy, o.width, o.height);
-          ctx.fillRect(
-            ox + o.width * 0.2,
-            oy + o.height * 0.1,
-            o.width * 0.6,
-            o.height * 0.3
-          );
-          ctx.fillRect(
-            ox + o.width * 0.2,
-            oy + o.height * 0.6,
-            o.width * 0.6,
-            o.height * 0.3
-          );
-        } else if (o.type === "truck") {
-          ctx.drawImage(truckImageRef.current, ox, oy, o.width, o.height);
-        } else if (o.type === "train") {
-          ctx.fillRect(ox, oy, o.width, o.height);
-          ctx.fillRect(
-            ox + o.width * 0.1,
-            oy + o.height * 0.2,
-            o.width * 0.15,
-            o.height * 0.6
-          );
-          ctx.fillRect(
-            ox + o.width * 0.3,
-            oy + o.height * 0.2,
-            o.width * 0.15,
-            o.height * 0.6
-          );
-          ctx.fillRect(
-            ox + o.width * 0.5,
-            oy + o.height * 0.2,
-            o.width * 0.15,
-            o.height * 0.6
-          );
-          ctx.fillRect(
-            ox + o.width * 0.7,
-            oy + o.height * 0.2,
-            o.width * 0.15,
-            o.height * 0.6
-          );
+        // Check if we have an image for this vehicle type
+        const vehicleImage = vehicleImagesRef.current[o.vehicleKey];
+        if (vehicleImage) {
+          // Draw the vehicle image
+          ctx.drawImage(vehicleImage, ox, oy, o.width, o.height);
+        } else {
+          // Fallback to drawn graphics (like trains)
+          if (o.type === "train") {
+            ctx.fillRect(ox, oy, o.width, o.height);
+            ctx.fillRect(
+              ox + o.width * 0.1,
+              oy + o.height * 0.2,
+              o.width * 0.15,
+              o.height * 0.6
+            );
+            ctx.fillRect(
+              ox + o.width * 0.3,
+              oy + o.height * 0.2,
+              o.width * 0.15,
+              o.height * 0.6
+            );
+            ctx.fillRect(
+              ox + o.width * 0.5,
+              oy + o.height * 0.2,
+              o.width * 0.15,
+              o.height * 0.6
+            );
+            ctx.fillRect(
+              ox + o.width * 0.7,
+              oy + o.height * 0.2,
+              o.width * 0.15,
+              o.height * 0.6
+            );
+          } else {
+            // Fallback rectangle for any vehicle without an image
+            ctx.fillRect(ox, oy, o.width, o.height);
+          }
         }
       }
 
