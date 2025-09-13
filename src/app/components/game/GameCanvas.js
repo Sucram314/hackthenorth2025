@@ -251,9 +251,9 @@ export default function GameCanvas({ playing, onRestart }) {
   // --- dimensions / constants (adapted from PoC) ---
   const W = 960,
     H = 540;
-  const PLAYER_SIZE = 40;
-  const OBSTACLE_HEIGHT = 60;
-  const COLLECTIBLE_SIZE = 20;
+  const PLAYER_SIZE = 60;
+  const OBSTACLE_HEIGHT = 80;
+  const COLLECTIBLE_SIZE = 40;
   const OBSTACLE_SPACING = 500;
   const COLLECTIBLE_SPACING = 250;
   const NUMBER_OF_OBS = 10;
