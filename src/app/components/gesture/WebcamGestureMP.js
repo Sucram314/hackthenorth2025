@@ -84,7 +84,7 @@ const WebcamGestureMP = forwardRef((props, ref) => {
   // ===== helpers copied/adapted from PoC =====
   function estimateHandRotation(lm) {
     const wrist = lm[0];
-    const middleMcp = lm[9];
+    const middleMcp = lm[10];
     const pinkyMcp = lm[17];
 
     const vecUpX = middleMcp.x - wrist.x;
