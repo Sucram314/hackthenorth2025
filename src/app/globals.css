@@ -3,8 +3,8 @@
 @import "tailwindcss";
 
 @font-face {
-  font-family: 'ka1';
-  src: url('/font/ka1.ttf') format('truetype');
+  font-family: "ka1";
+  src: url("/font/ka1.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
 }
@@ -96,7 +96,8 @@ body {
   background-color: var(--popover, #171717);
   color: var(--popover-foreground, #ededed);
   border: 1px solid var(--border, #262626);
-  box-shadow: 0 4px 16px -2px rgba(0 0 0 / 0.4), 0 0 0 1px rgba(255 255 255 / 0.03) inset;
+  box-shadow: 0 4px 16px -2px rgba(0 0 0 / 0.4),
+    0 0 0 1px rgba(255 255 255 / 0.03) inset;
   backdrop-filter: none; /* ensure no translucency */
 }
 .theme-menu button:hover {
@@ -109,14 +110,14 @@ body {
 }
 
 .pixel-text {
-  font-family: 'Press Start 2P', monospace;
+  font-family: "Press Start 2P", monospace;
   color: #ffffff;
   text-shadow: 1px 1px 0 black;
   font-size: 13px;
 }
 
 .pixel-button {
-  font-family: 'Press Start 2P', monospace;
+  font-family: "Press Start 2P", monospace;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 1px;
@@ -139,46 +140,33 @@ body {
   cursor: not-allowed;
 }
 
-/* Pixel Art Controls Panel */
-.controls-panel {
+.controls-panel,
+.webcam-panel,
+.game-panel {
   position: relative;
   border: 2px solid #6b7280; /* gray-500 - lighter than gray-800 */
   box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 0.8);
   -webkit-box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 0.8); /* Safari */
 }
 
-/* Pixel Art Webcam Panel */
-.webcam-panel {
-  position: relative;
-  border: 2px solid #6b7280; /* gray-500 */
-  box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 0.8);
-  -webkit-box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 0.8); /* Safari */
-}
-
-
 /* Dark theme styles for controls panel */
 .dark .controls-panel,
-[data-theme="dark"] .controls-panel {
+[data-theme="dark"] .controls-panel,
+.dark .webcam-panel,
+[data-theme="dark"] .webcam-panel,
+.dark .game-panel,
+[data-theme="dark"] .game-panel {
   border-color: #e5e7eb; /* gray-200 */
   box-shadow: 8px 8px 0px 0px rgba(255, 255, 255, 0.4);
   -webkit-box-shadow: 8px 8px 0px 0px rgba(255, 255, 255, 0.4); /* Safari */
 }
 
 .dark .controls-panel::before,
-[data-theme="dark"] .controls-panel::before {
-  border-color: #9ca3af; /* gray-400 */
-}
-
-/* Dark theme styles for webcam panel */
-.dark .webcam-panel,
-[data-theme="dark"] .webcam-panel {
-  border-color: #e5e7eb; /* gray-200 */
-  box-shadow: 8px 8px 0px 0px rgba(255, 255, 255, 0.4);
-  -webkit-box-shadow: 8px 8px 0px 0px rgba(255, 255, 255, 0.4); /* Safari */
-}
-
+[data-theme="dark"] .controls-panel::before,
 .dark .webcam-panel::before,
-[data-theme="dark"] .webcam-panel::before {
+[data-theme="dark"] .webcam-panel::before,
+.dark .game-panel::before,
+[data-theme="dark"] .game-panel::before {
   border-color: #9ca3af; /* gray-400 */
 }
 
