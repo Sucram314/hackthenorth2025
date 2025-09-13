@@ -204,6 +204,7 @@ export default function GameCanvas({ playing }) {
       if (S.x < o.x - o.width / 2) {
         const push = S.x + PLAYER_SIZE/2 - (o.x - o.width/2);
         for (const ob of S.obstacles) ob.x += push;
+        for (const co of S.collectibles) co.x += push;
       } else {
         if (S.y < oy) S.y = oy - o.height/2 - PLAYER_SIZE/2;
         else S.y = oy + o.height/2 + PLAYER_SIZE/2;

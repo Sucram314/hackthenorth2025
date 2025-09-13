@@ -30,7 +30,7 @@ export default function WebcamGestureMP() {
   const handX = useRef([]);
   const brushingValue = useRef(0);
   const BRUSHING_DECAY = 0.9;
-  const BRUSHING_IMPACT_FACTOR = 3;
+  const BRUSHING_IMPACT_FACTOR = 2;
   const SMOOTHING_ALPHA = 0.1;
   const smoothedImpact = useRef(0);
 
