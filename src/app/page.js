@@ -47,7 +47,7 @@ function HomeInner() {
                     disabled={loading}
                     className="px-6 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {loading ? "Loading…" : "Start Camera"}
+                    {loading ? "Loading…" : "Game Start!"}
                   </button>
                 </div>
               )}
