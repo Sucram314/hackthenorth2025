@@ -42,17 +42,23 @@
       background: #060a18; border:1px solid #1b294f; border-radius:14px; overflow:hidden;
       display: flex; justify-content: center; align-items: center;
     }
-    #gameCanvas {
-      background: #101933;
-      border: 1px solid #2a3c69;
-      border-radius: 8px;
+    /* Only the video will be truly hidden if we draw on overlay */
+    video { transform: scaleX(-1); position:absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; }
+    /* The overlay canvas will now be our main display */
+    #overlay {
+      position: absolute; inset: 0; width:100%; height:100%;
+      pointer-events: none; /* Allow interaction with elements behind if any */
+      transform: scaleX(-1); /* Mirror the canvas content to match video selfie view */
     }
-    video, canvas { position: absolute; inset: 0; width:100%; height:100%; }
-    video { transform: scaleX(-1); }
-    canvas { pointer-events:none; }
+    /* We no longer need a separate gameCanvas */
+    #gameCanvas {
+      display: none; /* Hide the gameCanvas as we're drawing on overlay */
+    }
     .watermark {
       position:absolute; top:8px; right:10px; font-size:12px; color:#cfe3ff; opacity:.8;
       background:#0b1430aa; padding:6px 8px; border-radius:10px; border:1px solid #1e2a4d;
+      z-index: 10; /* Ensure watermark is on top */
+      transform: scaleX(-1); /* Un-mirror watermark text */
     }
     .log {
       padding: 10px 12px; border:1px dashed #28407a; border-radius:12px; color: #c9d7ee; background:#0d162e;
@@ -76,10 +82,13 @@
 
     <div class="row" style="margin-top:10px;">
       <div class="stage">
-        <video id="video" playsinline muted style="display:none;"></video>
-        <canvas id="overlay" style="display:none;"></canvas>
-        <canvas id="gameCanvas" width="640" height="360"></canvas>
-        <div class="watermark">Hand landmarks + connections (hidden)</div>
+        <!-- The video element will now be the background source for the canvas -->
+        <video id="video" playsinline muted></video>
+        <!-- The overlay canvas will now draw everything: video, landmarks, and game -->
+        <canvas id="overlay"></canvas>
+        <!-- The dedicated gameCanvas is no longer needed -->
+        <canvas id="gameCanvas" width="640" height="360" style="display:none;"></canvas>
+        <div class="watermark">Hand landmarks + game overlay</div>
       </div>
       <div class="log" id="log">Click “Start camera”, allow permission, then hold your hand up 🖐️.
         Tilt your hand up for the top lane.
@@ -105,8 +114,8 @@
       handsCount: document.getElementById('handsCount'),
       log: document.getElementById('log'),
       video: document.getElementById('video'),
-      overlay: document.getElementById('overlay'),
-      gameCanvas: document.getElementById('gameCanvas'),
+      overlay: document.getElementById('overlay'), // This is now the main drawing canvas
+      // gameCanvas is no longer directly used for drawing
     };
 
     let stream;
@@ -114,16 +123,21 @@
     let rafId = 0;
     let lastTime = 0, frames = 0, lastFpsUpdate = 0;
 
-    const overlayCtx = ui.overlay.getContext('2d');
-    const gameCtx = ui.gameCanvas.getContext('2d');
-    const drawer = new DrawingUtils(overlayCtx);
+    const mainCtx = ui.overlay.getContext('2d'); // Use overlayCtx as the main context
+    const drawer = new DrawingUtils(mainCtx);
 
     // Game state variables
-    const LANE_HEIGHT = ui.gameCanvas.height / 3;
+    // Now these values need to be relative to the overlay canvas dimensions
+    let overlayWidth = 0;
+    let overlayHeight = 0;
+    const GAME_AREA_WIDTH = 640; // Maintain conceptual game area dimensions
+    const GAME_AREA_HEIGHT = 360;
+
+    let LANE_HEIGHT = GAME_AREA_HEIGHT / 3;
     const OBJECT_SIZE = 40;
-    let objectY = LANE_HEIGHT / 2; // Start in middle lane (will be updated by gesture)
+    let objectY = LANE_HEIGHT / 2;
     let targetY = objectY;
-    let objectX = ui.gameCanvas.width / 4;
+    let objectX = GAME_AREA_WIDTH / 4;
     const OBJECT_SPEED = 5;
 
     function setStatus(text){ ui.status.textContent = text; }
@@ -163,8 +177,17 @@
       ui.video.srcObject = stream;
       await ui.video.play();
 
-      ui.overlay.width = ui.video.videoWidth;
-      ui.overlay.height = ui.video.videoHeight;
+      // Set overlay canvas dimensions to match video
+      overlayWidth = ui.video.videoWidth;
+      overlayHeight = ui.video.videoHeight;
+      ui.overlay.width = overlayWidth;
+      ui.overlay.height = overlayHeight;
+
+      // Update LANE_HEIGHT based on actual overlay height
+      LANE_HEIGHT = overlayHeight / 3;
+      objectY = LANE_HEIGHT / 2; // Reset initial position
+      targetY = objectY;
+      objectX = overlayWidth / 4; // Position object on the left, scaled to overlay width
 
       lastTime = -1; frames = 0; lastFpsUpdate = performance.now();
       loop();
@@ -176,44 +199,34 @@
         stream.getTracks().forEach(t => t.stop());
         stream = null;
       }
-      overlayCtx.clearRect(0,0,ui.overlay.width, ui.overlay.height);
+      mainCtx.clearRect(0,0,ui.overlay.width, ui.overlay.height);
       ui.video.srcObject = null;
       ui.startBtn.disabled = false;
       ui.stopBtn.disabled = true;
       setLive(false);
       ui.handsCount.textContent = "0";
       ui.fps.textContent = "0";
-
-      gameCtx.clearRect(0, 0, ui.gameCanvas.width, ui.gameCanvas.height);
     }
 
     // Function to estimate yaw, pitch, and roll based on hand posture
-    // This is from the previous version, adapted for lane control.
     function estimateHandRotation(landmarks) {
-      // Using wrist (0), middle finger MCP (9), and pinky MCP (17) for a basic plane
       const wrist = landmarks[0];
       const middleMcp = landmarks[9];
       const pinkyMcp = landmarks[17];
 
-      // Vector along the presumed object's axis (from wrist towards middle finger base if hand is closed)
       const vecObjAxisX = middleMcp.x - wrist.x;
       const vecObjAxisY = middleMcp.y - wrist.y;
       const vecObjAxisZ = middleMcp.z - wrist.z;
 
-      // Normalizing the vector
       const mag = Math.sqrt(vecObjAxisX*vecObjAxisX + vecObjAxisY*vecObjAxisY + vecObjAxisZ*vecObjAxisZ);
       const normalX = vecObjAxisX / mag;
       const normalY = vecObjAxisY / mag;
       const normalZ = vecObjAxisZ / mag;
 
-      // Yaw (rotation around Y-axis) - looking left/right
-      const yaw = Math.atan2(normalX, -normalZ) * (180 / Math.PI); // -Z for forward
-
-      // Pitch (rotation around X-axis) - pointing up/down
+      const yaw = Math.atan2(normalX, -normalZ) * (180 / Math.PI);
       const pitch = Math.atan2(normalY, Math.sqrt(normalX * normalX + normalZ * normalZ)) * (180 / Math.PI);
 
-      // Roll (rotation around Z-axis) - twisting
-      const vecSideX = pinkyMcp.x - wrist.x; // Using pinky-wrist for a side vector
+      const vecSideX = pinkyMcp.x - wrist.x;
       const vecSideY = pinkyMcp.y - wrist.y;
       const roll = Math.atan2(vecSideY, vecSideX) * (180 / Math.PI);
 
@@ -226,49 +239,66 @@
 
     // Function to map pitch to lane
     function getLaneFromPitch(pitch) {
-        // These thresholds will likely need tuning based on how you hold your hand.
-        // Positive pitch typically means pointing downwards.
-        // Negative pitch typically means pointing upwards.
-        const UP_PITCH_THRESHOLD = 40; // e.g., if hand points up by > 20 degrees
-        const DOWN_PITCH_THRESHOLD = -40; // e.g., if hand points down by > 20 degrees
+        // Swapped UP and DOWN conditions
+        const UP_PITCH_THRESHOLD = -60;
+        const DOWN_PITCH_THRESHOLD = 20;
 
-        if (pitch > UP_PITCH_THRESHOLD) {
-            return "up";
-        } else if (pitch < DOWN_PITCH_THRESHOLD) {
-            return "down";
+        if (pitch < UP_PITCH_THRESHOLD) {
+            return "down"; // Was "up", now "down"
+        } else if (pitch > DOWN_PITCH_THRESHOLD) {
+            return "up"; // Was "down", now "up"
         } else {
-            return "front"; // Neutral/flat hand
+            return "front";
         }
     }
 
+    // Function to draw the game state on the main canvas (overlayCtx)
+    function drawGameOverlay() {
+      // Game drawing logic needs to consider the mainCtx's coordinate system
+      // and ensure it scales correctly within the video frame.
 
-    // Function to draw the game state
-    function drawGame() {
-      gameCtx.clearRect(0, 0, ui.gameCanvas.width, ui.gameCanvas.height);
+      // We need to un-mirror the drawing for game elements
+      mainCtx.save();
+      // The overlay canvas is already transformed with scaleX(-1) in CSS.
+      // To draw content correctly, we need to temporarily reverse this transformation
+      // or draw as if the canvas is not mirrored, and then apply the mirroring
+      // after the fact. The current CSS transform handles the overall mirroring.
+      // For drawing internal elements, we should draw them as they appear logically.
+      // The `transform: scaleX(-1);` on #overlay means anything drawn on it
+      // will be mirrored. If we want our *game elements* to appear un-mirrored,
+      // we need to draw them in a way that compensates for this.
 
-      // Draw lanes
-      gameCtx.strokeStyle = 'rgba(150, 150, 150, 0.4)';
-      gameCtx.lineWidth = 2;
-      gameCtx.beginPath();
-      gameCtx.moveTo(0, LANE_HEIGHT);
-      gameCtx.lineTo(ui.gameCanvas.width, LANE_HEIGHT);
-      gameCtx.moveTo(0, LANE_HEIGHT * 2);
-      gameCtx.lineTo(ui.gameCanvas.width, LANE_HEIGHT * 2);
-      gameCtx.stroke();
+      // Option 1: Apply an inverse transform to the context
+      mainCtx.scale(-1, 1); // Apply an inverse mirror to draw content un-mirrored
+      mainCtx.translate(-overlayWidth, 0); // Translate back to keep content in view
+
+      // Draw lanes (scaled to overlay dimensions)
+      mainCtx.strokeStyle = 'rgba(150, 150, 150, 0.4)';
+      mainCtx.lineWidth = 2;
+      mainCtx.beginPath();
+      mainCtx.moveTo(0, LANE_HEIGHT);
+      mainCtx.lineTo(overlayWidth, LANE_HEIGHT);
+      mainCtx.moveTo(0, LANE_HEIGHT * 2);
+      mainCtx.lineTo(overlayWidth, LANE_HEIGHT * 2);
+      mainCtx.stroke();
 
       // Move object smoothly
       if (Math.abs(targetY - objectY) > 1) {
-          objectY += (targetY - objectY) * 0.1; // Easing function
+          objectY += (targetY - objectY) * 0.1;
       } else {
           objectY = targetY;
       }
 
-      // Draw the object
-      gameCtx.fillStyle = '#5ad';
-      gameCtx.beginPath();
-      gameCtx.arc(objectX, objectY, OBJECT_SIZE / 2, 0, Math.PI * 2);
-      gameCtx.fill();
+      // Draw the object (scaled to overlay dimensions)
+      mainCtx.fillStyle = '#5ad';
+      mainCtx.beginPath();
+      // objectX and objectY should now be directly in overlay coordinates
+      mainCtx.arc(objectX, objectY, OBJECT_SIZE / 2, 0, Math.PI * 2);
+      mainCtx.fill();
+
+      mainCtx.restore(); // Restore context to original (CSS-mirrored) state for landmarks
     }
+
 
     function loop(){
       rafId = requestAnimationFrame(loop);
@@ -278,18 +308,32 @@
       if (ui.video.currentTime !== lastTime) {
         lastTime = ui.video.currentTime;
 
+        // Clear the canvas for the new frame
+        mainCtx.clearRect(0,0,overlayWidth, overlayHeight);
+
+        // 1. Draw the video frame as the background
+        // The video element itself is mirrored by CSS: `video { transform: scaleX(-1); }`
+        // When drawing it to the canvas, we draw it normally. The #overlay canvas's CSS
+        // `transform: scaleX(-1);` will mirror the entire canvas content, including the video drawn on it.
+        mainCtx.drawImage(ui.video, 0, 0, overlayWidth, overlayHeight);
+
+
+        // 2. Detect hand landmarks
         const result = detector.detectForVideo(ui.video, now);
 
-        overlayCtx.clearRect(0,0,ui.overlay.width, ui.overlay.height);
         let logLines = [];
 
         if (result?.landmarks?.length) {
           ui.handsCount.textContent = String(result.landmarks.length);
           result.landmarks.forEach((lm, i) => {
+            // 3. Draw hand landmarks over the video
+            // The `DrawingUtils` class automatically handles the `transform: scaleX(-1)`
+            // of the canvas if the context is passed to it, so landmarks will appear
+            // correctly overlaid on the mirrored video.
             drawer.drawConnectors(lm, HandLandmarker.HAND_CONNECTIONS, { lineWidth: 3 });
             drawer.drawLandmarks(lm, { lineWidth: 1, radius: 3 });
 
-            // Use the rotation estimation from the previous version
+            // Estimate hand rotation
             const rotation = estimateHandRotation(lm);
             const currentLaneCommand = getLaneFromPitch(rotation.pitch);
 
@@ -298,24 +342,25 @@
             // Logic to move the object to the chosen lane based on pitch
             switch (currentLaneCommand) {
                 case "up":
-                    targetY = LANE_HEIGHT / 2; // Top lane center
+                    targetY = LANE_HEIGHT / 2;
                     break;
                 case "down":
-                    targetY = LANE_HEIGHT * 2.5; // Bottom lane center
+                    targetY = LANE_HEIGHT * 2.5;
                     break;
                 case "front":
                 default:
-                    targetY = LANE_HEIGHT * 1.5; // Middle lane center
+                    targetY = LANE_HEIGHT * 1.5;
                     break;
             }
           });
         } else {
           ui.handsCount.textContent = "0";
           logLines.push("No hand detected. Defaulting to middle lane.");
-          targetY = LANE_HEIGHT * 1.5; // Default to middle lane if no hand
+          targetY = LANE_HEIGHT * 1.5;
         }
 
-        drawGame();
+        // 4. Draw the game elements over the hand wireframe
+        drawGameOverlay();
 
         frames++;
         if (now - lastFpsUpdate > 1000) {
