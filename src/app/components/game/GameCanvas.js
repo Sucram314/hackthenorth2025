@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useGesture, LANE } from "../gesture/GestureContext";
+import useSound from "use-sound";
 
 // Vehicle image configuration - easily extensible
 const vehicleConfig = {
@@ -33,14 +34,13 @@ const vehicleConfig = {
  * - Obstacle speed boosted by "brushing" from the webcam component
  * - Lane selection driven by pitch (up/front/down)
  */
-export default function GameCanvas({ playing }) {
+export default function GameCanvas({ playing, onRestart }) {
   const gestureContext = useGesture();
   const lane = gestureContext?.lane ?? LANE.FRONT;
   const brush = gestureContext?.brush ?? 0;
   const live = gestureContext?.live ?? false;
   const laneRef = useRef(lane);
   const brushRef = useRef(brush);
-  // Extensible vehicle image management system
   const vehicleImagesRef = useRef({});
 
   const playerhappy1 = useRef(null);
@@ -49,6 +49,10 @@ export default function GameCanvas({ playing }) {
   const playerunhappy2 = useRef(null);
 
   const coin1 = useRef(null);
+
+  const [audio] = useState(
+    typeof Audio !== "undefined" && new Audio("coinpickup.mp3")
+  ); //this will prevent rendering errors on NextJS since NodeJs doesn't recognise HTML tags neither its libs.
 
   useEffect(() => {
     laneRef.current = lane;
@@ -110,61 +114,7 @@ export default function GameCanvas({ playing }) {
   const [gameOver, setGameOver] = useState(false);
   const [walkState, setWalkState] = useState(false);
   const [isUnhappy, setUnhappy] = useState(false);
-
-  // --- dimensions / constants (adapted from PoC) ---
-  const W = 960,
-    H = 540;
-  const PLAYER_SIZE = 40;
-  const OBSTACLE_HEIGHT = 60;
-  const COLLECTIBLE_SIZE = 20;
-  const OBSTACLE_SPACING = 500;
-  const COLLECTIBLE_SPACING = 250;
-  const NUMBER_OF_OBS = 10;
-  const NUMBER_OF_COL = 20;
-
-  const stateRef = useRef(null);
-  if (!stateRef.current) {
-    stateRef.current = {
-      lanes: [0, 1, 2],
-      laneH: H / 3,
-      x: W / 4,
-      y: (H / 3) * 1.5,
-      ty: (H / 3) * 1.5,
-      vx: 0,
-      vy: 0,
-      obstacles: [],
-      collectibles: [],
-      baseObstacleSpeed: 2,
-      laneLineOffset: 0, // Track horizontal offset for lane line animation
-    };
-  }
-
-  // timer lifecycle (starts when playing turns true)
-  useEffect(() => {
-    if (!playing) return;
-    setGameOver(false);
-    setScore(0);
-    setTimeLeft(120);
-    setWalkState(false);
-
-    const t2 = setInterval(() => {
-      setWalkState((s) => !s);
-    }, 300);
-
-    const t = setInterval(() => {
-      setTimeLeft((s) => {
-        if (s <= 1) {
-          clearInterval(t);
-          clearInterval(t2);
-          setGameOver(true);
-          return 0;
-        }
-        return s - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(t);
-  }, [playing]);
+  const [showRestartButton, setShowRestartButton] = useState(false);
 
   const obstacleSpec = useCallback(() => {
     // Use the vehicle configuration for consistent specs
@@ -198,28 +148,7 @@ export default function GameCanvas({ playing }) {
     [obstacleSpec]
   );
 
-  // build a new level whenever we (re)start
-  useEffect(() => {
-    const S = stateRef.current;
-    S.laneH = H / 3;
-    S.y = S.ty = S.laneH * 1.5;
-    S.obstacles = [];
-    S.collectibles = [];
-
-    // Obstacles
-    for (let i = 0; i < NUMBER_OF_OBS; i++) {
-      const initialX = W + i * OBSTACLE_SPACING;
-      S.obstacles.push(createObstacle(initialX, S));
-    }
-    // Collectibles
-    for (let i = 0; i < NUMBER_OF_COL; i++) {
-      const initialX = W + i * COLLECTIBLE_SPACING;
-      const c = createCollectible(initialX, S);
-      if (c) S.collectibles.push(c);
-    }
-  }, [playing, createObstacle]);
-
-  function createCollectible(initialX, S) {
+  const createCollectible = useCallback((initialX, S) => {
     let tries = 0;
     while (tries++ < 100) {
       const lane = S.lanes[Math.floor(Math.random() * S.lanes.length)];
@@ -239,7 +168,118 @@ export default function GameCanvas({ playing }) {
       if (!hit) return { lane, x, y, size: COLLECTIBLE_SIZE, color: "#FFD700" };
     }
     return null;
+  }, []);
+
+  // Game start/restart function with timer lifecycle
+  const startGame = useCallback(() => {
+    setScore(0);
+    setTimeLeft(120);
+    setGameOver(false);
+    setWalkState(false);
+    setUnhappy(false);
+    setShowRestartButton(false);
+
+    // Reset game state
+    const S = stateRef.current;
+    S.laneH = H / 3;
+    S.y = S.ty = S.laneH * 1.5;
+    S.obstacles = [];
+    S.collectibles = [];
+    S.laneLineOffset = 0;
+
+    // Rebuild level
+    for (let i = 0; i < NUMBER_OF_OBS; i++) {
+      const initialX = W + i * OBSTACLE_SPACING;
+      S.obstacles.push(createObstacle(initialX, S));
+    }
+    for (let i = 0; i < NUMBER_OF_COL; i++) {
+      const initialX = W + i * COLLECTIBLE_SPACING;
+      const c = createCollectible(initialX, S);
+      if (c) S.collectibles.push(c);
+    }
+
+    // Start timer
+    const walkInterval = setInterval(() => {
+      setWalkState((s) => !s);
+    }, 300);
+
+    const timerInterval = setInterval(() => {
+      setTimeLeft((s) => {
+        if (s <= 1) {
+          clearInterval(timerInterval);
+          clearInterval(walkInterval);
+          setGameOver(true);
+          setShowRestartButton(true);
+          return 0;
+        }
+        return s - 1;
+      });
+    }, 1000);
+
+    // Store intervals for cleanup
+    S.timerInterval = timerInterval;
+    S.walkInterval = walkInterval;
+
+    if (onRestart) {
+      onRestart();
+    }
+  }, [createObstacle, createCollectible, onRestart]);
+
+  // Restart function (alias for startGame for backward compatibility)
+  const handleRestart = useCallback(() => {
+    startGame();
+  }, [startGame]);
+
+  // --- dimensions / constants (adapted from PoC) ---
+  const W = 960,
+    H = 540;
+  const PLAYER_SIZE = 40;
+  const OBSTACLE_HEIGHT = 60;
+  const COLLECTIBLE_SIZE = 20;
+  const OBSTACLE_SPACING = 500;
+  const COLLECTIBLE_SPACING = 250;
+  const NUMBER_OF_OBS = 10;
+  const NUMBER_OF_COL = 20;
+
+  const stateRef = useRef(null);
+  if (!stateRef.current) {
+    stateRef.current = {
+      lanes: [0, 1, 2],
+      laneH: H / 3,
+      x: W / 4,
+      y: (H / 3) * 1.5,
+      ty: (H / 3) * 1.5,
+      vx: 0,
+      vy: 0,
+      obstacles: [],
+      collectibles: [],
+      baseObstacleSpeed: 2,
+      laneLineOffset: 0, // Track horizontal offset for lane line animation
+      timerInterval: null,
+      walkInterval: null,
+    };
   }
+
+  // Start game when playing turns true
+  useEffect(() => {
+    if (!playing) return;
+    startGame();
+  }, [playing, startGame]);
+
+  // Cleanup intervals when component unmounts or game stops
+  useEffect(() => {
+    return () => {
+      const S = stateRef.current;
+      if (S.timerInterval) {
+        clearInterval(S.timerInterval);
+        S.timerInterval = null;
+      }
+      if (S.walkInterval) {
+        clearInterval(S.walkInterval);
+        S.walkInterval = null;
+      }
+    };
+  }, []);
 
   function targetYFromLane(l, S) {
     if (l === LANE.UP) return S.laneH / 2;
@@ -356,7 +396,8 @@ export default function GameCanvas({ playing }) {
           const newX = last ? last.x + COLLECTIBLE_SPACING : W;
           const nc = createCollectible(newX, S);
           if (nc) S.collectibles.push(nc);
-          continue;
+          audio.currentTime = 0;
+          audio.play();
         }
 
         // recycle off-screen
@@ -486,12 +527,18 @@ export default function GameCanvas({ playing }) {
       if (!live) ctx.fillText(`Camera: off`, 12, 102);
 
       if (showGameOver) {
+        // Draw black translucent background rectangle
+        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+        ctx.fillRect(0, 0, W, H);
+
+        // Draw game over text
         ctx.fillStyle = "rgba(104, 194, 211, 0.9)";
         ctx.font = "bold 48px 'Press Start 2P', monospace";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText("You did it! 😁", W / 2, H / 2);
+        ctx.fillText("You did it! 😁", W / 2, H / 2 - 40);
         ctx.font = "bold 24px ui-sans-serif, system-ui, -apple-system";
+        ctx.fillText(`Final Score: ${score}`, W / 2, H / 2 + 20);
         ctx.textAlign = "left";
       }
     }
@@ -518,15 +565,28 @@ export default function GameCanvas({ playing }) {
     walkState,
     live,
     createObstacle,
+    createCollectible,
     isUnhappy,
   ]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={W}
-      height={H}
-      className="w-full max-w-4xl aspect-[16/9] rounded-2xl bg-neutral-900 ring-1 ring-neutral-800"
-    />
+    <div className="relative">
+      <canvas
+        ref={canvasRef}
+        width={W}
+        height={H}
+        className="w-full max-w-4xl aspect-[16/9] rounded-2xl bg-neutral-900 ring-1 ring-neutral-800"
+      />
+      {showRestartButton && (
+        <div className="absolute inset-0 flex flex-col items-center justify-end rounded-2xl">
+          <button
+            onClick={handleRestart}
+            className="px-8 py-4 mb-8 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xl transition-colors duration-200 shadow-lg"
+          >
+            Restart
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
