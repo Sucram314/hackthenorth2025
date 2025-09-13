@@ -102,6 +102,7 @@ export default function GameCanvas({ playing }) {
   const [timeLeft, setTimeLeft] = useState(120);
   const [gameOver, setGameOver] = useState(false);
   const [walkState, setWalkState] = useState(false);
+  const [isUnhappy, setUnhappy] = useState(false);
 
   // --- dimensions / constants (adapted from PoC) ---
   const W = 960,
@@ -302,6 +303,7 @@ export default function GameCanvas({ playing }) {
 
       // simple resolve on collision: push around obstacle (same spirit as PoC)
       if (collidedIdx !== -1) {
+        setUnhappy(true);
         const o = S.obstacles[collidedIdx];
         const oy = S.laneH * o.lane + S.laneH / 2;
         if (S.x < o.x - o.width / 2) {
@@ -313,7 +315,7 @@ export default function GameCanvas({ playing }) {
           else S.y = oy + o.height / 2 + PLAYER_SIZE / 2;
           S.ty = S.y;
         }
-      }
+      } else setUnhappy(false);
 
       // collectibles
       for (let i = S.collectibles.length - 1; i >= 0; i--) {
@@ -374,7 +376,7 @@ export default function GameCanvas({ playing }) {
       ctx.stroke();
 
       // player
-      ctx.drawImage((walkState ? playerhappy1.current : playerhappy2.current),S.x-PLAYER_SIZE/2,S.y-PLAYER_SIZE/2,PLAYER_SIZE,PLAYER_SIZE);
+      ctx.drawImage(isUnhappy ? (walkState ? playerunhappy1.current : playerunhappy2.current) : (walkState ? playerhappy1.current : playerhappy2.current),S.x-PLAYER_SIZE/2,S.y-PLAYER_SIZE/2,PLAYER_SIZE,PLAYER_SIZE);
 
       // obstacles
       for (const o of S.obstacles) {
