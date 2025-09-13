@@ -410,6 +410,11 @@ export default function GameCanvas({ playing }) {
         PLAYER_SIZE
       );
 
+      // collectibles
+      for (const c of S.collectibles) {
+        ctx.drawImage(coin1.current,c.x-c.size/2,c.y-c.size/2,c.size,c.size);
+      }
+
       // obstacles
       for (const o of S.obstacles) {
         const cy = S.laneH * o.lane + S.laneH / 2;
@@ -455,11 +460,6 @@ export default function GameCanvas({ playing }) {
             ctx.fillRect(ox, oy, o.width, o.height);
           }
         }
-      }
-
-      // collectibles
-      for (const c of S.collectibles) {
-        ctx.drawImage(coin1.current,c.x-c.size/2,c.y-c.size/2,c.size,c.size);
       }
 
       // HUD
