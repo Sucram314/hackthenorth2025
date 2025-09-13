@@ -50,8 +50,12 @@ export default function GameCanvas({ playing, onRestart }) {
   const coin1 = useRef(null);
   const candyCorn = useRef(null);
 
-  const [coinpickup] = useState( typeof Audio !== "undefined" && new Audio("coinpickup.mp3")); 
-  const [music] = useState( typeof Audio !== "undefined" && new Audio("JOYCORE SNIPPET.mp3")); 
+  const [coinpickup] = useState(
+    typeof Audio !== "undefined" && new Audio("coinpickup.mp3")
+  );
+  const [music] = useState(
+    typeof Audio !== "undefined" && new Audio("JOYCORE SNIPPET.mp3")
+  );
 
   useEffect(() => {
     laneRef.current = lane;
@@ -153,31 +157,7 @@ export default function GameCanvas({ playing, onRestart }) {
     [obstacleSpec]
   );
 
-  // build a new level whenever we (re)start
-  useEffect(() => {
-    music.currentTime = 0;
-    music.play();
-
-    const S = stateRef.current;
-    S.laneH = H / 3;
-    S.y = S.ty = S.laneH * 1.5;
-    S.obstacles = [];
-    S.collectibles = [];
-
-    // Obstacles
-    for (let i = 0; i < NUMBER_OF_OBS; i++) {
-      const initialX = W + i * OBSTACLE_SPACING;
-      S.obstacles.push(createObstacle(initialX, S));
-    }
-    // Collectibles
-    for (let i = 0; i < NUMBER_OF_COL; i++) {
-      const initialX = W + i * COLLECTIBLE_SPACING;
-      const c = createCollectible(initialX, S);
-      if (c) S.collectibles.push(c);
-    }
-  }, [playing, createObstacle]);
-
-  function createCollectible(initialX, S) {
+  const createCollectible = useCallback((initialX, S) => {
     let tries = 0;
     while (tries++ < 100) {
       const lane = S.lanes[Math.floor(Math.random() * S.lanes.length)];
@@ -208,7 +188,31 @@ export default function GameCanvas({ playing, onRestart }) {
       }
     }
     return null;
-  };
+  }, []);
+
+  // build a new level whenever we (re)start
+  useEffect(() => {
+    music.currentTime = 0;
+    music.play();
+
+    const S = stateRef.current;
+    S.laneH = H / 3;
+    S.y = S.ty = S.laneH * 1.5;
+    S.obstacles = [];
+    S.collectibles = [];
+
+    // Obstacles
+    for (let i = 0; i < NUMBER_OF_OBS; i++) {
+      const initialX = W + i * OBSTACLE_SPACING;
+      S.obstacles.push(createObstacle(initialX, S));
+    }
+    // Collectibles
+    for (let i = 0; i < NUMBER_OF_COL; i++) {
+      const initialX = W + i * COLLECTIBLE_SPACING;
+      const c = createCollectible(initialX, S);
+      if (c) S.collectibles.push(c);
+    }
+  }, [playing, createObstacle, createCollectible, music]);
 
   // Game start/restart function with timer lifecycle
   const startGame = useCallback(() => {
@@ -620,6 +624,7 @@ export default function GameCanvas({ playing, onRestart }) {
     createCollectible,
     isUnhappy,
     coinpickup,
+    music,
   ]);
 
   return (
