@@ -48,6 +48,7 @@ export default function GameCanvas({ playing, onRestart }) {
   const playerunhappy2 = useRef(null);
 
   const coin1 = useRef(null);
+  const candyCorn = useRef(null);
 
   const [coinpickup] = useState( typeof Audio !== "undefined" && new Audio("coinpickup.mp3")); 
   const [music] = useState( typeof Audio !== "undefined" && new Audio("JOYCORE SNIPPET.mp3")); 
@@ -103,6 +104,12 @@ export default function GameCanvas({ playing, onRestart }) {
       coin1.current = c1;
     };
     c1.src = "/coin1.png";
+
+    const cc = new Image();
+    cc.onload = () => {
+      candyCorn.current = cc;
+    };
+    cc.src = "/candy-corn.png";
   }, []);
 
   const canvasRef = useRef(null);
@@ -187,7 +194,18 @@ export default function GameCanvas({ playing, onRestart }) {
           y - COLLECTIBLE_SIZE / 2 > oy + o.height / 2
         );
       });
-      if (!hit) return { lane, x, y, size: COLLECTIBLE_SIZE, color: "#FFD700" };
+      if (!hit) {
+        // Randomly choose between good (coin) and bad (candy corn) collectibles
+        const isGood = Math.random() < 0.9;
+        return {
+          lane,
+          x,
+          y,
+          size: COLLECTIBLE_SIZE,
+          color: isGood ? "#FFD700" : "#FF6B35",
+          type: isGood ? "good" : "bad",
+        };
+      }
     }
     return null;
   };
@@ -412,7 +430,15 @@ export default function GameCanvas({ playing, onRestart }) {
             c.size
           )
         ) {
-          setScore((s) => s + 1);
+          // Handle different collectible types
+          if (c.type === "good") {
+            setScore((s) => s + 1);
+            audio.currentTime = 0;
+            audio.play();
+          } else if (c.type === "bad") {
+            setScore((s) => Math.max(0, s - 1)); // Decrease score by 1, but don't go below 0
+          }
+
           S.collectibles.splice(i, 1);
           const last = S.collectibles[S.collectibles.length - 1];
           const newX = last ? last.x + COLLECTIBLE_SPACING : W;
@@ -475,13 +501,16 @@ export default function GameCanvas({ playing, onRestart }) {
 
       // collectibles
       for (const c of S.collectibles) {
-        ctx.drawImage(
-          coin1.current,
-          c.x - c.size / 2,
-          c.y - c.size / 2,
-          c.size,
-          c.size
-        );
+        const image = c.type === "good" ? coin1.current : candyCorn.current;
+        if (image) {
+          ctx.drawImage(
+            image,
+            c.x - c.size / 2,
+            c.y - c.size / 2,
+            c.size,
+            c.size
+          );
+        }
       }
 
       // obstacles
@@ -590,6 +619,7 @@ export default function GameCanvas({ playing, onRestart }) {
     createObstacle,
     createCollectible,
     isUnhappy,
+    audio,
   ]);
 
   return (
