@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useGesture, LANE } from "../gesture/GestureContext";
+import useSound from 'use-sound'
 
 // Vehicle image configuration - easily extensible
 const vehicleConfig = {
@@ -49,6 +50,8 @@ export default function GameCanvas({ playing }) {
   const playerunhappy2 = useRef(null);
 
   const coin1 = useRef(null);
+
+  const [audio] = useState( typeof Audio !== "undefined" && new Audio("coinpickup.mp3")); //this will prevent rendering errors on NextJS since NodeJs doesn't recognise HTML tags neither its libs.
 
   useEffect(() => {
     laneRef.current = lane;
@@ -356,7 +359,8 @@ export default function GameCanvas({ playing }) {
           const newX = last ? last.x + COLLECTIBLE_SPACING : W;
           const nc = createCollectible(newX, S);
           if (nc) S.collectibles.push(nc);
-          continue;
+          audio.currentTime = 0;
+          audio.play();
         }
 
         // recycle off-screen
