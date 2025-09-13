@@ -221,7 +221,14 @@ export default function GameCanvas({ playing, onRestart }) {
       const c = createCollectible(initialX, S);
       if (c) S.collectibles.push(c);
     }
-  }, [playing, createObstacle, createCollectible, music, coinpickup]);
+  }, [
+    playing,
+    createObstacle,
+    createCollectible,
+    music,
+    coinpickup,
+    candypickup,
+  ]);
 
   // Game start/restart function with timer lifecycle
   const startGame = useCallback(() => {
@@ -634,6 +641,7 @@ export default function GameCanvas({ playing, onRestart }) {
     isUnhappy,
     coinpickup,
     music,
+    candypickup,
   ]);
 
   return (
