@@ -18,6 +18,7 @@ export default function GameCanvas({ playing }) {
   const live = gestureContext?.live ?? false;
   const laneRef = useRef(lane);
   const brushRef = useRef(brush);
+  const truckImageRef = useRef(null);
 
   useEffect(() => {
     laneRef.current = lane;
@@ -25,6 +26,15 @@ export default function GameCanvas({ playing }) {
   useEffect(() => {
     brushRef.current = brush;
   }, [brush]);
+
+  // Load truck-kun image
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => {
+      truckImageRef.current = img;
+    };
+    img.src = "/truck-kun.png";
+  }, []);
 
   const canvasRef = useRef(null);
   const rafRef = useRef(0);
@@ -117,7 +127,7 @@ export default function GameCanvas({ playing }) {
   function obstacleSpec() {
     const types = [
       { type: "car", mult: 2, color: "#e84c3d" },
-      { type: "truck", mult: 3, color: "#f1c40f" },
+      { type: "truck", mult: 3, color: "#e84c3d" }, // Changed to red
       { type: "train", mult: 4, color: "#3498db" },
     ];
     return types[Math.floor(Math.random() * types.length)];
@@ -294,11 +304,9 @@ export default function GameCanvas({ playing }) {
         const ox = o.x - o.width / 2;
         const oy = cy - o.height / 2;
         ctx.fillStyle = o.color;
-        ctx.fillRect(ox, oy, o.width, o.height);
 
-        // minimal "details" (car/truck/train) as in PoC
-        ctx.fillStyle = "rgba(0,0,0,0.5)";
         if (o.type === "car") {
+          ctx.fillRect(ox, oy, o.width, o.height);
           ctx.fillRect(
             ox + o.width * 0.2,
             oy + o.height * 0.1,
@@ -312,8 +320,9 @@ export default function GameCanvas({ playing }) {
             o.height * 0.3
           );
         } else if (o.type === "truck") {
-          ctx.fillRect(ox, oy, o.width * 0.3, o.height);
+          ctx.drawImage(truckImageRef.current, ox, oy, o.width, o.height);
         } else if (o.type === "train") {
+          ctx.fillRect(ox, oy, o.width, o.height);
           ctx.fillRect(
             ox + o.width * 0.1,
             oy + o.height * 0.2,
@@ -371,7 +380,6 @@ export default function GameCanvas({ playing }) {
         ctx.textBaseline = "middle";
         ctx.fillText("GAME OVER!", W / 2, H / 2);
         ctx.font = "bold 24px ui-sans-serif, system-ui, -apple-system";
-        ctx.fillText("Start the camera to play again.", W / 2, H / 2 + 40);
         ctx.textAlign = "left";
       }
     }
