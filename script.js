@@ -641,10 +641,12 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
           }
         }
 
+        let pushBack = 0;
+
         if(collidedObstacleIndex != -1){
           const obstacle = level.obstacles[collidedObstacleIndex];
           if(objectX < obstacle.x - obstacle.width/2){
-            const pushBack = objectX + PLAYER_SIZE/2 - (obstacle.x - obstacle.width/2);
+            pushBack = objectX + PLAYER_SIZE/2 - (obstacle.x - obstacle.width/2);
             for (let i = 0; i < level.obstacles.length; i++) {
               const obstacle = level.obstacles[i];
               obstacle.x += pushBack;
@@ -658,14 +660,13 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
               objectY = obstacleY + obstacle.height/2 + PLAYER_SIZE/2;
             }
             targetY = objectY;
-            lastValidTargetY = targetY;
           }
         }
 
         // Move collectibles and check for collisions
         for (let i = level.collectibles.length - 1; i >= 0; i--) { // Iterate backwards for safe removal
             const collectible = level.collectibles[i];
-            const collectibleMovement = level.baseObstacleSpeed + (smoothedBrushingImpact * BRUSHING_IMPACT_FACTOR);
+            const collectibleMovement = level.baseObstacleSpeed + (smoothedBrushingImpact * BRUSHING_IMPACT_FACTOR) - pushBack;
             collectible.x -= collectibleMovement;
 
             if (checkCollision(objectX, objectY, PLAYER_SIZE, collectible)) {
