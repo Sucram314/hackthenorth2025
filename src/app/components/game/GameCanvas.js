@@ -381,7 +381,7 @@ export default function GameCanvas({ playing }) {
       // lanes - animated with offset for seamless looping
       ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
       ctx.setLineDash([18, 18]); // 18px dash, 18px gap
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 4;
       ctx.lineDashOffset = S.laneLineOffset; // Apply the animated offset
       ctx.beginPath();
 
@@ -412,7 +412,13 @@ export default function GameCanvas({ playing }) {
 
       // collectibles
       for (const c of S.collectibles) {
-        ctx.drawImage(coin1.current,c.x-c.size/2,c.y-c.size/2,c.size,c.size);
+        ctx.drawImage(
+          coin1.current,
+          c.x - c.size / 2,
+          c.y - c.size / 2,
+          c.size,
+          c.size
+        );
       }
 
       // obstacles
