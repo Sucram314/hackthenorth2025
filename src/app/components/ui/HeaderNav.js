@@ -10,9 +10,9 @@ export default function HeaderNav() {
           <span className="font-medium text-foreground">Toothrush</span>
         </div>
         <nav className="flex items-center gap-8 text-sm">
-          <span className="text-muted-foreground hover:text-foreground cursor-default">Game 1</span>
+          {/* <span className="text-muted-foreground hover:text-foreground cursor-default">Game 1</span>
           <span className="text-muted-foreground hover:text-foreground cursor-default">Game 2</span>
-          <ThemeToggle />
+          <ThemeToggle /> */}
         </nav>
       </div>
     </header>
