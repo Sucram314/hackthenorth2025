@@ -70,8 +70,8 @@ const WebcamGestureMP = forwardRef((props, ref) => {
   const HISTORY_SIZE = 10;
   const handX = useRef([]);
   const brushingValue = useRef(0);
-  const BRUSHING_DECAY = 0.9;
-  const BRUSHING_IMPACT_FACTOR = 2;
+  const BRUSHING_DECAY = 0.5;
+  const BRUSHING_IMPACT_FACTOR = 5;
   const SMOOTHING_ALPHA = 0.1;
   const smoothedImpact = useRef(0);
 
