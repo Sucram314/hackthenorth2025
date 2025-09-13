@@ -107,49 +107,33 @@ body {
   color: var(--accent-foreground, #ededed);
 }
 
-h2 {
-  font-family: 'ka1', 'Press Start 2P', monospace;
+.pixel-text {
+  font-family: 'Press Start 2P', monospace;
+  color: #ffffff;
+  text-shadow: 1px 1px 0 black;
+  font-size: 13px;
 }
 
-/* Pixel Art Controls Panel */
-.controls-panel {
-  position: relative;
-  border: 2px solid #6b7280; /* gray-500 - lighter than gray-800 */
-  box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 0.8);
-  -webkit-box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 0.8); /* Safari */
+.pixel-button {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+
+  padding: 0.75rem 1.5rem; /* matches px-6 py-3 */
+  border-radius: 0.5rem; /* matches rounded-lg */
+  background-color: #4f46e5; /* indigo-600 */
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
-/* Pixel Art Webcam Panel */
-.webcam-panel {
-  position: relative;
-  border: 2px solid #6b7280; /* gray-500 */
-  box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 0.8);
-  -webkit-box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 0.8); /* Safari */
+.pixel-button:hover {
+  background-color: #6366f1; /* indigo-500 */
 }
 
-
-/* Dark theme styles for controls panel */
-.dark .controls-panel,
-[data-theme="dark"] .controls-panel {
-  border-color: #e5e7eb; /* gray-200 */
-  box-shadow: 8px 8px 0px 0px rgba(255, 255, 255, 0.4);
-  -webkit-box-shadow: 8px 8px 0px 0px rgba(255, 255, 255, 0.4); /* Safari */
-}
-
-.dark .controls-panel::before,
-[data-theme="dark"] .controls-panel::before {
-  border-color: #9ca3af; /* gray-400 */
-}
-
-/* Dark theme styles for webcam panel */
-.dark .webcam-panel,
-[data-theme="dark"] .webcam-panel {
-  border-color: #e5e7eb; /* gray-200 */
-  box-shadow: 8px 8px 0px 0px rgba(255, 255, 255, 0.4);
-  -webkit-box-shadow: 8px 8px 0px 0px rgba(255, 255, 255, 0.4); /* Safari */
-}
-
-.dark .webcam-panel::before,
-[data-theme="dark"] .webcam-panel::before {
-  border-color: #9ca3af; /* gray-400 */
+.pixel-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

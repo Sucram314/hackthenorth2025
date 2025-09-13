@@ -538,7 +538,7 @@ export default function GameCanvas({ playing, onRestart }) {
 
       // HUD
       ctx.fillStyle = "#c67de0";
-      ctx.font = "12px 'Press Start 2P', monospace"; // smaller sizes look better due to pixel font
+      ctx.font = "14px 'Press Start 2P', monospace"; // smaller sizes look better due to pixel font
       ctx.lineWidth = 2;
       ctx.strokeStyle = "#000";
       ctx.fillText(`Score: ${score}`, 12, 22);
@@ -560,7 +560,7 @@ export default function GameCanvas({ playing, onRestart }) {
 
         // Draw game over text
         ctx.fillStyle = "rgba(104, 194, 211, 0.9)";
-        ctx.font = "bold 48px ui-sans-serif, system-ui, -apple-system";
+        ctx.font = "bold 48px 'Press Start 2P', monospace";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText("You did it! 😁", W / 2, H / 2 - 40);
