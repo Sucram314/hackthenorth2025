@@ -56,6 +56,9 @@ export default function GameCanvas({ playing, onRestart }) {
   const [music] = useState(
     typeof Audio !== "undefined" && new Audio("JOYCORE SNIPPET.mp3")
   );
+  const [candypickup] = useState(
+    typeof Audio !== "undefined" && new Audio("candypickup.mp3")
+  );
 
   useEffect(() => {
     laneRef.current = lane;
@@ -192,8 +195,14 @@ export default function GameCanvas({ playing, onRestart }) {
 
   // build a new level whenever we (re)start
   useEffect(() => {
-    music.currentTime = 0;
-    music.play();
+    if (playing) {
+      music.currentTime = 0;
+      music.play();
+    }
+    music.volume = 0.3;
+    music.loop = true;
+    coinpickup.volume = 0.3;
+    candypickup.volume = 0.3;
 
     const S = stateRef.current;
     S.laneH = H / 3;
@@ -212,7 +221,14 @@ export default function GameCanvas({ playing, onRestart }) {
       const c = createCollectible(initialX, S);
       if (c) S.collectibles.push(c);
     }
-  }, [playing, createObstacle, createCollectible, music]);
+  }, [
+    playing,
+    createObstacle,
+    createCollectible,
+    music,
+    coinpickup,
+    candypickup,
+  ]);
 
   // Game start/restart function with timer lifecycle
   const startGame = useCallback(() => {
@@ -441,6 +457,8 @@ export default function GameCanvas({ playing, onRestart }) {
             coinpickup.play();
           } else if (c.type === "bad") {
             setScore((s) => Math.max(0, s - 1)); // Decrease score by 1, but don't go below 0
+            candypickup.currentTime = 0;
+            candypickup.play();
           }
 
           S.collectibles.splice(i, 1);
@@ -448,8 +466,6 @@ export default function GameCanvas({ playing, onRestart }) {
           const newX = last ? last.x + COLLECTIBLE_SPACING : W;
           const nc = createCollectible(newX, S);
           if (nc) S.collectibles.push(nc);
-          coinpickup.currentTime = 0;
-          coinpickup.play();
         }
 
         // recycle off-screen
@@ -625,6 +641,7 @@ export default function GameCanvas({ playing, onRestart }) {
     isUnhappy,
     coinpickup,
     music,
+    candypickup,
   ]);
 
   return (
@@ -633,7 +650,7 @@ export default function GameCanvas({ playing, onRestart }) {
         ref={canvasRef}
         width={W}
         height={H}
-        className="w-full max-w-4xl aspect-[16/9] rounded-2xl bg-neutral-900 ring-1 ring-neutral-800"
+        className="w-full max-w-4xl aspect-[16/9] rounded-xl bg-neutral-900 ring-1 ring-neutral-800"
       />
       {showRestartButton && (
         <div className="absolute inset-0 flex flex-col items-center justify-end rounded-2xl">
