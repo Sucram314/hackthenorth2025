@@ -299,10 +299,6 @@ const WebcamGestureMP = forwardRef((props, ref) => {
         />
         <canvas ref={canRef} className="absolute inset-0 h-full w-full" />
       </div>
-
-      {/* <p className="mt-2 text-xs text-muted-foreground">
-        Uses MediaPipe Tasks Vision (Hands). Allow camera access.
-      </p> */}
     </div>
   );
 });
