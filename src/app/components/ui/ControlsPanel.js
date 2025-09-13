@@ -10,11 +10,11 @@ export default function ControlsPanel() {
         <h2>
           Ready to hack the plaque?
         </h2>
-        <p className="mt-3 text-sm text-muted-foreground">
-          Brush different sides of your teeth to switch lanes.<br />
-          Collect coins and avoid vehicles.<br />
-          Be wary about eating candy!
-        </p>
+        <ul className="mt-3 text-sm text-muted-foreground">
+          <li>Brush the top, front or bottom of your teeth to switch lanes.</li>
+          <li>Collect toothpaste and avoid vehicles.</li>
+          <li>Be wary about eating candy!</li>
+        </ul>
         {/* <p className="mt-2 text-xs text-muted-foreground">
           Hands detected: {handCount}
         </p> */}

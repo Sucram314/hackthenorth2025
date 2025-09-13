@@ -176,8 +176,16 @@ h2 {
   word-spacing: -2px;
 }
 
-p {
+ul, p {
   font-family: 'Roboto Mono', monospace;
   font-size: 14px;
   word-spacing: -2px;
+}
+
+li {
+  list-style-type: disc;
+}
+
+ul {
+  margin-left: 1rem;
 }
