@@ -43,6 +43,11 @@ export default function GameCanvas({ playing }) {
   // Extensible vehicle image management system
   const vehicleImagesRef = useRef({});
 
+  const playerhappy1 = useRef(null);
+  const playerhappy2 = useRef(null);
+  const playerunhappy1 = useRef(null);
+  const playerunhappy2 = useRef(null);
+
   useEffect(() => {
     laneRef.current = lane;
   }, [lane]);
@@ -64,6 +69,36 @@ export default function GameCanvas({ playing }) {
         img.src = config.src;
       }
     });
+    const img = new Image();
+    img.onload = () => {
+      truckImageRef.current = img;
+    };
+    img.src = "/truck-kun.png";
+
+    const h1 = new Image();
+    h1.onload = () => {
+      playerhappy1.current = h1;
+    };
+    h1.src = "/happy1.png";
+
+    const h2 = new Image();
+    h2.onload = () => {
+      playerhappy2.current = h2;
+    };
+    h2.src = "/happy2.png";
+
+    const u1 = new Image();
+    u1.onload = () => {
+      playerunhappy1.current = u1;
+    };
+    u1.src = "/unhappy1.png";
+
+    const u2 = new Image();
+    u2.onload = () => {
+      playerunhappy2.current = u2;
+    };
+    u2.src = "/unhappy2.png";
+
   }, []);
 
   const canvasRef = useRef(null);
@@ -71,6 +106,7 @@ export default function GameCanvas({ playing }) {
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(120);
   const [gameOver, setGameOver] = useState(false);
+  const [walkState, setWalkState] = useState(false);
 
   // --- dimensions / constants (adapted from PoC) ---
   const W = 960,
@@ -105,17 +141,24 @@ export default function GameCanvas({ playing }) {
     setGameOver(false);
     setScore(0);
     setTimeLeft(120);
+    setWalkState(false);
+
+    const t2 = setInterval(() => {
+      setWalkState((s)=>!s);
+    }, 300);
 
     const t = setInterval(() => {
       setTimeLeft((s) => {
         if (s <= 1) {
           clearInterval(t);
+          clearInterval(t2);
           setGameOver(true);
           return 0;
         }
         return s - 1;
       });
     }, 1000);
+
     return () => clearInterval(t);
   }, [playing]);
 
@@ -217,6 +260,7 @@ export default function GameCanvas({ playing }) {
     if (!playing) return;
 
     const ctx = canvasRef.current.getContext("2d");
+    ctx.imageSmoothingEnabled = false;
     let prev = 0;
 
     function update() {
@@ -335,10 +379,7 @@ export default function GameCanvas({ playing }) {
       ctx.stroke();
 
       // player
-      ctx.beginPath();
-      ctx.arc(S.x, S.y, PLAYER_SIZE / 2, 0, Math.PI * 2);
-      ctx.fillStyle = "#5ad";
-      ctx.fill();
+      ctx.drawImage((walkState ? playerhappy1.current : playerhappy2.current),S.x-PLAYER_SIZE/2,S.y-PLAYER_SIZE/2,PLAYER_SIZE,PLAYER_SIZE);
 
       // obstacles
       for (const o of S.obstacles) {
@@ -435,7 +476,7 @@ export default function GameCanvas({ playing }) {
     }
     rafRef.current = requestAnimationFrame(step);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [playing, gameOver, score, timeLeft, live, createObstacle]);
+  }, [playing, gameOver, score, timeLeft, walkState, live, createObstacle]);
 
   return (
     <canvas
