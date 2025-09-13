@@ -284,7 +284,7 @@ const WebcamGestureMP = forwardRef((props, ref) => {
 
   return (
     <div className="webcam-panel ring-1 ring-border bg-card p-6">
-      <h2 className="text-xl font-semibold text-card-foreground">Camera</h2>
+      <h2>Camera</h2>
       {err && <p className="mt-2 text-sm text-destructive">{err}</p>}
 
       <div className="relative mt-3 aspect-video rounded-xl overflow-hidden bg-muted">

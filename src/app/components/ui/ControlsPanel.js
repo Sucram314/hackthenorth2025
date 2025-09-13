@@ -7,7 +7,7 @@ export default function ControlsPanel() {
   return (
     <aside className="space-y-6">
       <div className="controls-panel bg-card p-6">
-        <h2 className="text-xl font-semibold text-card-foreground">
+        <h2>
           Ready to hack the plaque?
         </h2>
         <p className="mt-3 text-sm text-muted-foreground">

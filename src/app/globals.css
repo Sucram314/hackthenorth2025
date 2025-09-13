@@ -143,14 +143,15 @@ body {
   position: relative;
   border: 2px solid #6b7280; /* gray-500 - lighter than gray-800 */
   box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 0.8);
+  -webkit-box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 0.8); /* Safari */
 }
-
 
 /* Pixel Art Webcam Panel */
 .webcam-panel {
   position: relative;
   border: 2px solid #6b7280; /* gray-500 */
   box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 0.8);
+  -webkit-box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 0.8); /* Safari */
 }
 
 
@@ -159,6 +160,7 @@ body {
 [data-theme="dark"] .controls-panel {
   border-color: #e5e7eb; /* gray-200 */
   box-shadow: 8px 8px 0px 0px rgba(255, 255, 255, 0.4);
+  -webkit-box-shadow: 8px 8px 0px 0px rgba(255, 255, 255, 0.4); /* Safari */
 }
 
 .dark .controls-panel::before,
@@ -171,9 +173,14 @@ body {
 [data-theme="dark"] .webcam-panel {
   border-color: #e5e7eb; /* gray-200 */
   box-shadow: 8px 8px 0px 0px rgba(255, 255, 255, 0.4);
+  -webkit-box-shadow: 8px 8px 0px 0px rgba(255, 255, 255, 0.4); /* Safari */
 }
 
 .dark .webcam-panel::before,
 [data-theme="dark"] .webcam-panel::before {
   border-color: #9ca3af; /* gray-400 */
+}
+
+h2 {
+  font-family: 'ka1', sans-serif;
 }
