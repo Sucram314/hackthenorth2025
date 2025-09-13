@@ -13,13 +13,13 @@ const vehicleConfig = {
   truck: {
     src: "/truck-kun.png",
     type: "truck",
-    mult: 2.8,
+    mult: 2.2,
     color: "#e84c3d",
   },
   train: {
     src: "/shinkansen.png", // No image, uses drawn graphics
     type: "train",
-    mult: 6,
+    mult: 5,
     color: "#3498db",
   },
 };
@@ -508,14 +508,23 @@ export default function GameCanvas({ playing }) {
     }
     rafRef.current = requestAnimationFrame(step);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [playing, gameOver, score, timeLeft, walkState, live, createObstacle]);
+  }, [
+    playing,
+    gameOver,
+    score,
+    timeLeft,
+    walkState,
+    live,
+    createObstacle,
+    isUnhappy,
+  ]);
 
   return (
     <canvas
       ref={canvasRef}
       width={W}
       height={H}
-      className="w-full h-[540px] rounded-2xl bg-neutral-900 ring-1 ring-neutral-800"
+      className="w-full max-w-4xl aspect-[16/9] rounded-2xl bg-neutral-900 ring-1 ring-neutral-800"
     />
   );
 }
