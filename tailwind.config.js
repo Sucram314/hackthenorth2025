@@ -52,6 +52,7 @@ module.exports = {
         sans: ['var(--font-geist-sans)', 'system-ui', 'sans-serif'],
         mono: ['var(--font-geist-mono)', 'monospace'],
         press: ["'Press Start 2P'", "monospace"],
+        robotoMono: ['"Roboto Mono"', 'monospace'],
       },
     },
   },

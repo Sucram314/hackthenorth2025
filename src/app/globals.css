@@ -1,4 +1,5 @@
-@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
 @import "tailwindcss";
 
 @font-face {
@@ -170,5 +171,13 @@ body {
 }
 
 h2 {
-  font-family: "Press Start 2P", monospace;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 14px;
+  word-spacing: -2px;
+}
+
+p {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 14px;
+  word-spacing: -2px;
 }
