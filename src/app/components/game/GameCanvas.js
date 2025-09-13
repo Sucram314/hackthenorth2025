@@ -653,8 +653,11 @@ export default function GameCanvas({ playing, onRestart }) {
         className="w-full max-w-4xl aspect-[16/9] bg-neutral-900 ring-1 ring-neutral-800"
       />
       {showRestartButton && (
-        <div className="absolute inset-0 flex flex-col items-center justify-end rounded-2xl">
-          <button onClick={handleRestart} className="pixel-button">
+        <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl">
+          <button
+            onClick={handleRestart}
+            className="relative pixel-button top-1/4"
+          >
             Restart
           </button>
         </div>
