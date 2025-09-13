@@ -6,7 +6,7 @@ export default function ControlsPanel() {
   const { handCount } = useGesture();
   return (
     <aside className="space-y-6">
-      <div className="rounded-2xl ring-1 ring-border bg-card p-6">
+      <div className="ring-1 ring-border bg-card p-6">
         <h2 className="text-xl font-semibold text-card-foreground">
           Game Controls
         </h2>
