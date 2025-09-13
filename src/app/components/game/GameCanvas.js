@@ -526,7 +526,7 @@ export default function GameCanvas({ playing }) {
       ref={canvasRef}
       width={W}
       height={H}
-      className="w-full max-w-4xl aspect-[16/9] rounded-2xl bg-neutral-900 ring-1 ring-neutral-800"
+      className="w-full max-w-4xl aspect-[16/9] bg-neutral-900 ring-1 ring-neutral-800"
     />
   );
 }

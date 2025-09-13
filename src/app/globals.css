@@ -1,6 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'ka1';
+  src: url('/font/ka1.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 :root {
   /* Light theme colors */
   --background: #ffffff;
@@ -98,4 +105,8 @@ body {
 .theme-menu button.is-active {
   background-color: var(--accent, #262626);
   color: var(--accent-foreground, #ededed);
+}
+
+h2 {
+  font-family: 'ka1', 'Press Start 2P', monospace;
 }
