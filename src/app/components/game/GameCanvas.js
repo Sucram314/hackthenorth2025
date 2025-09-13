@@ -336,7 +336,7 @@ export default function GameCanvas({ playing }) {
       // collectibles
       for (let i = S.collectibles.length - 1; i >= 0; i--) {
         const c = S.collectibles[i];
-        c.x -= S.baseObstacleSpeed + boost;
+        c.x -= boost;
 
         // collide
         if (
