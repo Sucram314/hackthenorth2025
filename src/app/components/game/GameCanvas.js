@@ -13,13 +13,13 @@ const vehicleConfig = {
   truck: {
     src: "/truck-kun.png",
     type: "truck",
-    mult: 2.8,
+    mult: 2.2,
     color: "#e84c3d",
   },
   train: {
     src: "/shinkansen.png", // No image, uses drawn graphics
     type: "train",
-    mult: 6,
+    mult: 5,
     color: "#3498db",
   },
 };
@@ -336,7 +336,7 @@ export default function GameCanvas({ playing }) {
       // collectibles
       for (let i = S.collectibles.length - 1; i >= 0; i--) {
         const c = S.collectibles[i];
-        c.x -= S.baseObstacleSpeed + boost;
+        c.x -= boost;
 
         // collide
         if (
@@ -381,7 +381,7 @@ export default function GameCanvas({ playing }) {
       // lanes - animated with offset for seamless looping
       ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
       ctx.setLineDash([18, 18]); // 18px dash, 18px gap
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 4;
       ctx.lineDashOffset = S.laneLineOffset; // Apply the animated offset
       ctx.beginPath();
 
@@ -412,7 +412,13 @@ export default function GameCanvas({ playing }) {
 
       // collectibles
       for (const c of S.collectibles) {
-        ctx.drawImage(coin1.current,c.x-c.size/2,c.y-c.size/2,c.size,c.size);
+        ctx.drawImage(
+          coin1.current,
+          c.x - c.size / 2,
+          c.y - c.size / 2,
+          c.size,
+          c.size
+        );
       }
 
       // obstacles
@@ -463,8 +469,10 @@ export default function GameCanvas({ playing }) {
       }
 
       // HUD
-      ctx.fillStyle = "#e5e7eb";
-      ctx.font = "14px ui-sans-serif, system-ui, -apple-system";
+      ctx.fillStyle = "#c67de0";
+      ctx.font = "12px 'Press Start 2P', monospace"; // smaller sizes look better due to pixel font
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#000";
       ctx.fillText(`Score: ${score}`, 12, 22);
       ctx.fillText(
         `Time: ${String(Math.floor(timeLeft / 60)).padStart(2, "0")}:${String(
@@ -473,16 +481,16 @@ export default function GameCanvas({ playing }) {
         12,
         42
       );
-      ctx.fillText(`Boost: ${brushRef.current.toFixed(2)}`, 12, 62);
-      ctx.fillText(`Lane: ${laneRef.current}`, 12, 82);
+      // ctx.fillText(`Boost: ${brushRef.current.toFixed(2)}`, 12, 62);
+      // ctx.fillText(`Lane: ${laneRef.current}`, 12, 82);
       if (!live) ctx.fillText(`Camera: off`, 12, 102);
 
       if (showGameOver) {
-        ctx.fillStyle = "rgba(255,0,0,0.7)";
+        ctx.fillStyle = "rgba(104, 194, 211, 0.9)";
         ctx.font = "bold 48px ui-sans-serif, system-ui, -apple-system";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText("GAME OVER!", W / 2, H / 2);
+        ctx.fillText("You did it! 😁", W / 2, H / 2);
         ctx.font = "bold 24px ui-sans-serif, system-ui, -apple-system";
         ctx.textAlign = "left";
       }
@@ -502,14 +510,23 @@ export default function GameCanvas({ playing }) {
     }
     rafRef.current = requestAnimationFrame(step);
     return () => cancelAnimationFrame(rafRef.current);
-  }, [playing, gameOver, score, timeLeft, walkState, live, createObstacle]);
+  }, [
+    playing,
+    gameOver,
+    score,
+    timeLeft,
+    walkState,
+    live,
+    createObstacle,
+    isUnhappy,
+  ]);
 
   return (
     <canvas
       ref={canvasRef}
       width={W}
       height={H}
-      className="w-full h-[540px] rounded-2xl bg-neutral-900 ring-1 ring-neutral-800"
+      className="w-full max-w-4xl aspect-[16/9] rounded-2xl bg-neutral-900 ring-1 ring-neutral-800"
     />
   );
 }
