@@ -51,7 +51,8 @@ export default function GameCanvas({ playing }) {
 
   const coin1 = useRef(null);
 
-  const [audio] = useState( typeof Audio !== "undefined" && new Audio("coinpickup.mp3")); //this will prevent rendering errors on NextJS since NodeJs doesn't recognise HTML tags neither its libs.
+  const [coinpickup] = useState( typeof Audio !== "undefined" && new Audio("coinpickup.mp3")); 
+  const [music] = useState( typeof Audio !== "undefined" && new Audio("JOYCORE SNIPPET.mp3")); 
 
   useEffect(() => {
     laneRef.current = lane;
@@ -149,6 +150,9 @@ export default function GameCanvas({ playing }) {
     setScore(0);
     setTimeLeft(120);
     setWalkState(false);
+    music.loop = true;
+    music.volume = 0.2;
+    coinpickup.volume = 0.3;
 
     const t2 = setInterval(() => {
       setWalkState((s) => !s);
@@ -203,6 +207,9 @@ export default function GameCanvas({ playing }) {
 
   // build a new level whenever we (re)start
   useEffect(() => {
+    music.currentTime = 0;
+    music.play();
+
     const S = stateRef.current;
     S.laneH = H / 3;
     S.y = S.ty = S.laneH * 1.5;
@@ -359,8 +366,8 @@ export default function GameCanvas({ playing }) {
           const newX = last ? last.x + COLLECTIBLE_SPACING : W;
           const nc = createCollectible(newX, S);
           if (nc) S.collectibles.push(nc);
-          audio.currentTime = 0;
-          audio.play();
+          coinpickup.currentTime = 0;
+          coinpickup.play();
         }
 
         // recycle off-screen
@@ -495,6 +502,7 @@ export default function GameCanvas({ playing }) {
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText("You did it! 😁", W / 2, H / 2);
+        music.pause();
         ctx.font = "bold 24px ui-sans-serif, system-ui, -apple-system";
         ctx.textAlign = "left";
       }
