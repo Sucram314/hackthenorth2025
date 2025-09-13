@@ -78,6 +78,8 @@
       <span class="pill"><span class="dot" id="dot"></span><span id="status">idle</span></span>
       <span class="pill" title="frames per second">FPS: <strong id="fps">0</strong></span>
       <span class="pill">Hands: <strong id="handsCount">0</strong></span>
+      <span class="pill">Brushing: <strong id="brushingValue">0.00</strong></span>
+      <span class="pill">Score: <strong id="score">0</strong></span>
     </div>
 
     <div class="row" style="margin-top:10px;">
@@ -94,6 +96,7 @@
         Tilt your hand up for the top lane.
         Tilt your hand down for the bottom lane.
         Hold it flat for the middle lane.
+        Brush your hand back and forth horizontally to make obstacles move faster!
       </div>
     </div>
 
@@ -112,10 +115,11 @@
       status: document.getElementById('status'),
       fps: document.getElementById('fps'),
       handsCount: document.getElementById('handsCount'),
+      brushingValue: document.getElementById('brushingValue'),
+      score: document.getElementById('score'),
       log: document.getElementById('log'),
       video: document.getElementById('video'),
-      overlay: document.getElementById('overlay'), // This is now the main drawing canvas
-      // gameCanvas is no longer directly used for drawing
+      overlay: document.getElementById('overlay'),
     };
 
     let stream;
@@ -123,22 +127,43 @@
     let rafId = 0;
     let lastTime = 0, frames = 0, lastFpsUpdate = 0;
 
-    const mainCtx = ui.overlay.getContext('2d'); // Use overlayCtx as the main context
+    const mainCtx = ui.overlay.getContext('2d');
     const drawer = new DrawingUtils(mainCtx);
 
-    // Game state variables
-    // Now these values need to be relative to the overlay canvas dimensions
     let overlayWidth = 0;
     let overlayHeight = 0;
-    const GAME_AREA_WIDTH = 640; // Maintain conceptual game area dimensions
-    const GAME_AREA_HEIGHT = 360;
 
-    let LANE_HEIGHT = GAME_AREA_HEIGHT / 3;
-    const OBJECT_SIZE = 40;
-    let objectY = LANE_HEIGHT / 2;
-    let targetY = objectY;
-    let objectX = GAME_AREA_WIDTH / 4;
-    const OBJECT_SPEED = 5;
+    let LANE_HEIGHT;
+    const PLAYER_SIZE = 40;
+    let objectY;
+    let targetY;
+    let objectX;
+
+    // Brushing detection variables
+    const HISTORY_SIZE = 10;
+    let handXPositions = [];
+    let brushingValue = 0;
+    const BRUSHING_DECAY = 0.9;
+    const BRUSHING_IMPACT_FACTOR = 8; // How much brushing affects obstacle speed
+    let smoothedBrushingImpact = 0; // New variable for smoothed impact
+    const SMOOTHING_ALPHA = 0.1; // Smoothing factor (0 to 1, lower = more smooth)
+
+
+    // Game state variables
+    let score = 0;
+    let gameOver = false;
+    let currentLaneState = "front"; // To keep track of the current hand posture state
+
+    // Level definition and state
+    let level = {
+      obstacles: [],
+      nextObstacleTime: 0, // When the next obstacle should appear
+      minObstacleInterval: 1000, // Minimum time between obstacles (ms)
+      maxObstacleInterval: 4000, // Maximum time between obstacles (ms)
+      baseObstacleSpeed: 2, // Base speed for obstacles
+      obstacleSize: 100, // Default obstacle size
+      lanes: [0, 1, 2] // Lane indices
+    };
 
     function setStatus(text){ ui.status.textContent = text; }
     function setLive(on){
@@ -169,6 +194,9 @@
       ui.startBtn.disabled = true;
       ui.stopBtn.disabled = false;
       setLive(true);
+      gameOver = false;
+      score = 0;
+      ui.score.textContent = score;
 
       stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: { ideal: 960 }, height: { ideal: 540 } },
@@ -177,17 +205,23 @@
       ui.video.srcObject = stream;
       await ui.video.play();
 
-      // Set overlay canvas dimensions to match video
       overlayWidth = ui.video.videoWidth;
       overlayHeight = ui.video.videoHeight;
       ui.overlay.width = overlayWidth;
       ui.overlay.height = overlayHeight;
 
-      // Update LANE_HEIGHT based on actual overlay height
       LANE_HEIGHT = overlayHeight / 3;
-      objectY = LANE_HEIGHT / 2; // Reset initial position
+      objectY = LANE_HEIGHT * 1.5;
       targetY = objectY;
-      objectX = overlayWidth / 4; // Position object on the left, scaled to overlay width
+      objectX = overlayWidth / 4;
+
+      handXPositions = [];
+      brushingValue = 0;
+      smoothedBrushingImpact = 0; // Initialize smoothed value
+      currentLaneState = "front"; // Reset state on camera start
+
+      level.obstacles = [];
+      level.nextObstacleTime = performance.now() + Math.random() * (level.maxObstacleInterval - level.minObstacleInterval) + level.minObstacleInterval;
 
       lastTime = -1; frames = 0; lastFpsUpdate = performance.now();
       loop();
@@ -206,29 +240,29 @@
       setLive(false);
       ui.handsCount.textContent = "0";
       ui.fps.textContent = "0";
+      ui.brushingValue.textContent = "0.00";
+      gameOver = true;
     }
 
-    // Function to estimate yaw, pitch, and roll based on hand posture
     function estimateHandRotation(landmarks) {
       const wrist = landmarks[0];
       const middleMcp = landmarks[9];
       const pinkyMcp = landmarks[17];
 
-      const vecObjAxisX = middleMcp.x - wrist.x;
-      const vecObjAxisY = middleMcp.y - wrist.y;
-      const vecObjAxisZ = middleMcp.z - wrist.z;
+      const vecUpX = middleMcp.x - wrist.x;
+      const vecUpY = middleMcp.y - wrist.y;
+      const vecUpZ = middleMcp.z - wrist.z;
 
-      const mag = Math.sqrt(vecObjAxisX*vecObjAxisX + vecObjAxisY*vecObjAxisY + vecObjAxisZ*vecObjAxisZ);
-      const normalX = vecObjAxisX / mag;
-      const normalY = vecObjAxisY / mag;
-      const normalZ = vecObjAxisZ / mag;
+      const magUp = Math.sqrt(vecUpX*vecUpX + vecUpY*vecUpY + vecUpZ*vecUpZ);
+      const normUpY = vecUpY / magUp;
 
-      const yaw = Math.atan2(normalX, -normalZ) * (180 / Math.PI);
-      const pitch = Math.atan2(normalY, Math.sqrt(normalX * normalX + normalZ * normalZ)) * (180 / Math.PI);
+      const pitch = Math.asin(normUpY) * (180 / Math.PI);
 
       const vecSideX = pinkyMcp.x - wrist.x;
       const vecSideY = pinkyMcp.y - wrist.y;
       const roll = Math.atan2(vecSideY, vecSideX) * (180 / Math.PI);
+
+      const yaw = Math.atan2(vecUpX, -vecUpZ) * (180 / Math.PI);
 
       return {
         yaw: parseFloat(yaw.toFixed(2)),
@@ -237,42 +271,80 @@
       };
     }
 
-    // Function to map pitch to lane
     function getLaneFromPitch(pitch) {
-        // Swapped UP and DOWN conditions
-        const UP_PITCH_THRESHOLD = -60;
-        const DOWN_PITCH_THRESHOLD = 30;
+        // Define base thresholds
+        const BASE_UP_THRESHOLD = -60;
+        const BASE_DOWN_THRESHOLD = 30;
 
-        if (pitch < UP_PITCH_THRESHOLD) {
-            return "down"; // Was "up", now "down"
-        } else if (pitch > DOWN_PITCH_THRESHOLD) {
-            return "up"; // Was "down", now "up"
-        } else {
-            return "front";
+        // Define hysteresis bias
+        const HYSTERESIS_BIAS = 10; // degrees
+
+        let upThreshold = BASE_UP_THRESHOLD;
+        let downThreshold = BASE_DOWN_THRESHOLD;
+
+        // Apply bias based on current state
+        if (currentLaneState === "up") {
+            // To go from "up" to "front", pitch must be greater than BASE_UP_THRESHOLD + BIAS
+            upThreshold = BASE_UP_THRESHOLD + HYSTERESIS_BIAS/2;
+        } else if (currentLaneState === "down") {
+            // To go from "down" to "front", pitch must be less than BASE_DOWN_THRESHOLD - BIAS
+            downThreshold = BASE_DOWN_THRESHOLD - HYSTERESIS_BIAS/2;
+        } else if (currentLaneState === "front") {
+            // To go from "front" to "up", pitch must be less than BASE_UP_THRESHOLD
+            // To go from "front" to "down", pitch must be greater than BASE_DOWN_THRESHOLD
+            upThreshold = BASE_UP_THRESHOLD - HYSTERESIS_BIAS/2;
+            downThreshold = BASE_DOWN_THRESHOLD + HYSTERESIS_BIAS/2;
         }
+
+        let newState;
+        if (pitch < upThreshold) {
+            newState = "down"; // Hand tilted upwards, means 'down' in selfie view
+        } else if (pitch > downThreshold) {
+            newState = "up"; // Hand tilted downwards, means 'up' in selfie view
+        } else {
+            newState = "front";
+        }
+
+        currentLaneState = newState; // Update the global state
+        return newState;
     }
 
-    // Function to draw the game state on the main canvas (overlayCtx)
+    function checkCollision(playerX, playerY, playerSize, obstacle) {
+      const dx = playerX - obstacle.x;
+      const dy = playerY - (LANE_HEIGHT * obstacle.lane + LANE_HEIGHT / 2);
+      const distance = Math.sqrt(dx * dx + dy * dy);
+
+      // Using approximate bounding box for collision for simplicity with rect obstacles
+      // Player (circle): centerX, centerY, radius
+      // Obstacle (rect): x, y (top-left), width, height
+      const playerRadius = playerSize / 2;
+      const obstacleHalfSize = obstacle.size / 2;
+      const obstacleCenterX = obstacle.x;
+      const obstacleCenterY = (LANE_HEIGHT * obstacle.lane + LANE_HEIGHT / 2);
+
+      // Closest point on obstacle to player center
+      let testX = playerX;
+      let testY = playerY;
+
+      if (playerX < obstacleCenterX - obstacleHalfSize) testX = obstacleCenterX - obstacleHalfSize;      // left edge
+      else if (playerX > obstacleCenterX + obstacleHalfSize) testX = obstacleCenterX + obstacleHalfSize;   // right edge
+      if (playerY < obstacleCenterY - obstacleHalfSize) testY = obstacleCenterY - obstacleHalfSize;      // top edge
+      else if (playerY > obstacleCenterY + obstacleHalfSize) testY = obstacleCenterY + obstacleHalfSize;   // bottom edge
+
+      const distX = playerX - testX;
+      const distY = playerY - testY;
+      const distanceSquared = (distX * distX) + (distY * distY);
+
+      return distanceSquared <= (playerRadius * playerRadius);
+    }
+
+
     function drawGameOverlay() {
-      // Game drawing logic needs to consider the mainCtx's coordinate system
-      // and ensure it scales correctly within the video frame.
-
-      // We need to un-mirror the drawing for game elements
       mainCtx.save();
-      // The overlay canvas is already transformed with scaleX(-1) in CSS.
-      // To draw content correctly, we need to temporarily reverse this transformation
-      // or draw as if the canvas is not mirrored, and then apply the mirroring
-      // after the fact. The current CSS transform handles the overall mirroring.
-      // For drawing internal elements, we should draw them as they appear logically.
-      // The `transform: scaleX(-1);` on #overlay means anything drawn on it
-      // will be mirrored. If we want our *game elements* to appear un-mirrored,
-      // we need to draw them in a way that compensates for this.
+      mainCtx.scale(-1, 1);
+      mainCtx.translate(-overlayWidth, 0);
 
-      // Option 1: Apply an inverse transform to the context
-      mainCtx.scale(-1, 1); // Apply an inverse mirror to draw content un-mirrored
-      mainCtx.translate(-overlayWidth, 0); // Translate back to keep content in view
-
-      // Draw lanes (scaled to overlay dimensions)
+      // Draw lanes
       mainCtx.strokeStyle = 'rgba(150, 150, 150, 0.4)';
       mainCtx.lineWidth = 2;
       mainCtx.beginPath();
@@ -282,64 +354,94 @@
       mainCtx.lineTo(overlayWidth, LANE_HEIGHT * 2);
       mainCtx.stroke();
 
-      // Move object smoothly
+      // Move player object smoothly
       if (Math.abs(targetY - objectY) > 1) {
           objectY += (targetY - objectY) * 0.1;
       } else {
           objectY = targetY;
       }
 
-      // Draw the object (scaled to overlay dimensions)
+      // Draw the player object
       mainCtx.fillStyle = '#5ad';
       mainCtx.beginPath();
-      // objectX and objectY should now be directly in overlay coordinates
-      mainCtx.arc(objectX, objectY, OBJECT_SIZE / 2, 0, Math.PI * 2);
+      mainCtx.arc(objectX, objectY, PLAYER_SIZE / 2, 0, Math.PI * 2);
       mainCtx.fill();
 
-      mainCtx.restore(); // Restore context to original (CSS-mirrored) state for landmarks
+      // Draw obstacles
+      level.obstacles.forEach(obstacle => {
+        mainCtx.fillStyle = '#e84c3d'; // Obstacle color
+        mainCtx.beginPath();
+        const obstacleY = LANE_HEIGHT * obstacle.lane + LANE_HEIGHT / 2;
+        mainCtx.rect(obstacle.x - obstacle.size / 2, obstacleY - obstacle.size / 2, obstacle.size, obstacle.size);
+        mainCtx.fill();
+      });
+
+      // Draw brushing value as text (will appear un-mirrored on screen)
+      mainCtx.fillStyle = '#fff';
+      mainCtx.font = '20px Arial';
+      mainCtx.textAlign = 'right';
+      mainCtx.textBaseline = 'top';
+      mainCtx.fillText(`Brushing: ${brushingValue.toFixed(2)} (Smoothed: ${smoothedBrushingImpact.toFixed(2)})`, overlayWidth - 10, 10);
+
+
+      // Game Over Text
+      if (gameOver) {
+        mainCtx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+        mainCtx.font = 'bold 48px Arial';
+        mainCtx.textAlign = 'center';
+        mainCtx.textBaseline = 'middle';
+        mainCtx.fillText('GAME OVER!', overlayWidth / 2, overlayHeight / 2);
+        mainCtx.font = 'bold 24px Arial';
+        mainCtx.fillText('Click "Start camera" to play again', overlayWidth / 2, overlayHeight / 2 + 40);
+      }
+
+      mainCtx.restore();
     }
 
 
     function loop(){
       rafId = requestAnimationFrame(loop);
-      if (!detector || !ui.video.videoWidth) return;
+      if (!detector || !ui.video.videoWidth) {
+        if (gameOver && ui.video.srcObject) { // Clear canvas once on game over
+          mainCtx.clearRect(0,0,overlayWidth, overlayHeight);
+          mainCtx.save();
+          mainCtx.scale(-1, 1);
+          mainCtx.translate(-overlayWidth, 0);
+          mainCtx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+          mainCtx.font = 'bold 48px Arial';
+          mainCtx.textAlign = 'center';
+          mainCtx.textBaseline = 'middle';
+          mainCtx.fillText('GAME OVER!', overlayWidth / 2, overlayHeight / 2);
+          mainCtx.font = 'bold 24px Arial';
+          mainCtx.fillText('Click "Start camera" to play again', overlayWidth / 2, overlayHeight / 2 + 40);
+          mainCtx.restore();
+        }
+        return; // Don't proceed if game is over or camera/detector not ready
+      }
+      if (gameOver) return; // Prevent game logic from running if already over
 
       const now = performance.now();
       if (ui.video.currentTime !== lastTime) {
         lastTime = ui.video.currentTime;
 
-        // Clear the canvas for the new frame
         mainCtx.clearRect(0,0,overlayWidth, overlayHeight);
-
-        // 1. Draw the video frame as the background
-        // The video element itself is mirrored by CSS: `video { transform: scaleX(-1); }`
-        // When drawing it to the canvas, we draw it normally. The #overlay canvas's CSS
-        // `transform: scaleX(-1);` will mirror the entire canvas content, including the video drawn on it.
         mainCtx.drawImage(ui.video, 0, 0, overlayWidth, overlayHeight);
 
-
-        // 2. Detect hand landmarks
         const result = detector.detectForVideo(ui.video, now);
-
         let logLines = [];
+        brushingValue *= BRUSHING_DECAY; // Apply decay to current brushing value
 
         if (result?.landmarks?.length) {
           ui.handsCount.textContent = String(result.landmarks.length);
           result.landmarks.forEach((lm, i) => {
-            // 3. Draw hand landmarks over the video
-            // The `DrawingUtils` class automatically handles the `transform: scaleX(-1)`
-            // of the canvas if the context is passed to it, so landmarks will appear
-            // correctly overlaid on the mirrored video.
             drawer.drawConnectors(lm, HandLandmarker.HAND_CONNECTIONS, { lineWidth: 3 });
             drawer.drawLandmarks(lm, { lineWidth: 1, radius: 3 });
 
-            // Estimate hand rotation
             const rotation = estimateHandRotation(lm);
-            const currentLaneCommand = getLaneFromPitch(rotation.pitch);
+            const currentLaneCommand = getLaneFromPitch(rotation.pitch); // This now updates currentLaneState internally
 
             logLines.push(`Hand ${i+1}: Yaw: ${rotation.yaw}° Pitch: ${rotation.pitch}° Roll: ${rotation.roll}° -> Lane: ${currentLaneCommand}`);
 
-            // Logic to move the object to the chosen lane based on pitch
             switch (currentLaneCommand) {
                 case "up":
                     targetY = LANE_HEIGHT / 2;
@@ -352,14 +454,87 @@
                     targetY = LANE_HEIGHT * 1.5;
                     break;
             }
+
+            if (lm.length > 0) {
+              const currentX = lm[0].x * overlayWidth;
+              handXPositions.push(currentX);
+              if (handXPositions.length > HISTORY_SIZE) {
+                handXPositions.shift();
+              }
+
+              if (handXPositions.length === HISTORY_SIZE) {
+                let minX = handXPositions[0];
+                let maxX = handXPositions[0];
+                for (let j = 1; j < HISTORY_SIZE; j++) {
+                  if (handXPositions[j] < minX) minX = handXPositions[j];
+                  if (handXPositions[j] > maxX) maxX = handXPositions[j];
+                }
+                const range = maxX - minX;
+
+                let totalMovement = 0;
+                for (let j = 1; j < HISTORY_SIZE; j++) {
+                  totalMovement += Math.abs(handXPositions[j] - handXPositions[j-1]);
+                }
+
+                const currentBrushing = (range * 0.01) + (totalMovement * 0.005);
+                if (currentBrushing > brushingValue) {
+                    brushingValue = currentBrushing;
+                }
+              }
+            }
           });
         } else {
           ui.handsCount.textContent = "0";
           logLines.push("No hand detected. Defaulting to middle lane.");
           targetY = LANE_HEIGHT * 1.5;
+          currentLaneState = "front"; // Reset state if hand is not detected
+          handXPositions = [];
         }
 
-        // 4. Draw the game elements over the hand wireframe
+        // Apply smoothing to the brushing impact
+        smoothedBrushingImpact = smoothedBrushingImpact * (1 - SMOOTHING_ALPHA) + brushingValue * SMOOTHING_ALPHA;
+        
+        ui.brushingValue.textContent = brushingValue.toFixed(2);
+
+        // Game logic updates
+        // Generate new obstacles
+        if (now >= level.nextObstacleTime) {
+          const randomLane = level.lanes[Math.floor(Math.random() * level.lanes.length)];
+          level.obstacles.push({
+            lane: randomLane,
+            x: overlayWidth + level.obstacleSize, // Start off-screen to the right
+            speed: level.baseObstacleSpeed,
+            size: level.obstacleSize,
+            passed: false
+          });
+          level.nextObstacleTime = now + Math.random() * (level.maxObstacleInterval - level.minObstacleInterval) + level.minObstacleInterval;
+        }
+
+        // Move obstacles and check for collisions
+        for (let i = level.obstacles.length - 1; i >= 0; i--) {
+          const obstacle = level.obstacles[i];
+          // Use the smoothedBrushingImpact for obstacle movement
+          const obstacleMovement = obstacle.speed + (smoothedBrushingImpact * BRUSHING_IMPACT_FACTOR);
+          obstacle.x -= obstacleMovement;
+
+          if (checkCollision(objectX, objectY, PLAYER_SIZE, obstacle)) {
+            gameOver = true;
+            ui.log.textContent = "Game Over! You hit an obstacle.";
+            break;
+          }
+
+          if (obstacle.x < objectX - PLAYER_SIZE / 2 && !obstacle.passed) {
+            score++;
+            ui.score.textContent = score;
+            obstacle.passed = true;
+          }
+
+          if (obstacle.x < -obstacle.size) {
+            level.obstacles.splice(i, 1);
+          }
+        }
+
+
         drawGameOverlay();
 
         frames++;
