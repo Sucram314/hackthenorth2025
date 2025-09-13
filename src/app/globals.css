@@ -1,6 +1,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'ka1';
+  src: url('/font/ka1.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
 :root {
   /* Light theme colors */
   --background: #ffffff;
@@ -98,4 +105,51 @@ body {
 .theme-menu button.is-active {
   background-color: var(--accent, #262626);
   color: var(--accent-foreground, #ededed);
+}
+
+h2 {
+  font-family: 'ka1', 'Press Start 2P', monospace;
+}
+
+/* Pixel Art Controls Panel */
+.controls-panel {
+  position: relative;
+  border: 2px solid #6b7280; /* gray-500 - lighter than gray-800 */
+  box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 0.8);
+  -webkit-box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 0.8); /* Safari */
+}
+
+/* Pixel Art Webcam Panel */
+.webcam-panel {
+  position: relative;
+  border: 2px solid #6b7280; /* gray-500 */
+  box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 0.8);
+  -webkit-box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 0.8); /* Safari */
+}
+
+
+/* Dark theme styles for controls panel */
+.dark .controls-panel,
+[data-theme="dark"] .controls-panel {
+  border-color: #e5e7eb; /* gray-200 */
+  box-shadow: 8px 8px 0px 0px rgba(255, 255, 255, 0.4);
+  -webkit-box-shadow: 8px 8px 0px 0px rgba(255, 255, 255, 0.4); /* Safari */
+}
+
+.dark .controls-panel::before,
+[data-theme="dark"] .controls-panel::before {
+  border-color: #9ca3af; /* gray-400 */
+}
+
+/* Dark theme styles for webcam panel */
+.dark .webcam-panel,
+[data-theme="dark"] .webcam-panel {
+  border-color: #e5e7eb; /* gray-200 */
+  box-shadow: 8px 8px 0px 0px rgba(255, 255, 255, 0.4);
+  -webkit-box-shadow: 8px 8px 0px 0px rgba(255, 255, 255, 0.4); /* Safari */
+}
+
+.dark .webcam-panel::before,
+[data-theme="dark"] .webcam-panel::before {
+  border-color: #9ca3af; /* gray-400 */
 }

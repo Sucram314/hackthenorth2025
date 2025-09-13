@@ -38,16 +38,16 @@ function HomeInner() {
       <main className="mx-auto max-w-7xl px-6 py-8">
         <div className="grid grid-cols-12 gap-6">
           <section className="col-span-12 lg:col-span-8">
-            <div className="relative rounded-2xl ring-1 ring-border bg-card p-3">
+            <div className="relative h-full ring-1 ring-border bg-card p-3">
               <GameCanvas playing={playing} />
               {live === false && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-2xl">
+                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
                   <button
                     onClick={handleStartCamera}
                     disabled={loading}
                     className="px-6 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {loading ? "Loading…" : "Start Camera"}
+                    {loading ? "Loading…" : "Game Start!"}
                   </button>
                 </div>
               )}
