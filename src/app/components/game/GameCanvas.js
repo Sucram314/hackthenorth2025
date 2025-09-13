@@ -13,6 +13,11 @@ import { useGesture, LANE } from "../gesture/GestureContext";
  */
 export default function GameCanvas({ playing }) {
   const { lane, brush, live } = useGesture();
+  const laneRef = useRef(lane);
+  const brushRef = useRef(brush);
+
+  useEffect(() => { laneRef.current = lane; }, [lane]);
+  useEffect(() => { brushRef.current = brush; }, [brush]);
 
   const canvasRef = useRef(null);
   const rafRef = useRef(0);
@@ -164,12 +169,12 @@ export default function GameCanvas({ playing }) {
     const S = stateRef.current;
 
     // lane following (smooth)
-    S.ty = targetYFromLane(lane, S);
+    S.ty = targetYFromLane(laneRef.current, S);
     if (Math.abs(S.ty - S.y) > 1) S.y += (S.ty - S.y) * 0.1;
     else S.y = S.ty;
 
     // move obstacles with brushing boost
-    const boost = Math.max(0, brush); // already scaled in detector
+    const boost = Math.max(0, brushRef.current);
     let collidedIdx = -1;
 
     for (let i = S.obstacles.length - 1; i >= 0; i--) {
@@ -293,8 +298,8 @@ export default function GameCanvas({ playing }) {
     ctx.font = "14px ui-sans-serif, system-ui, -apple-system";
     ctx.fillText(`Score: ${score}`, 12, 22);
     ctx.fillText(`Time: ${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`, 12, 42);
-    ctx.fillText(`Boost: ${brush.toFixed(2)}`, 12, 62);
-    ctx.fillText(`Lane: ${lane}`, 12, 82);
+  ctx.fillText(`Boost: ${brushRef.current.toFixed(2)}`, 12, 62);
+  ctx.fillText(`Lane: ${laneRef.current}`, 12, 82);
     if (!live) ctx.fillText(`Camera: off`, 12, 102);
 
     if (showGameOver) {
