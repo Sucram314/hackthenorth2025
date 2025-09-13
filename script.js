@@ -52,7 +52,6 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
     let gameOver = false;
     let gameWon = false; // New game state variable
     let currentLaneState = "front"; // To keep track of the current hand posture state
-    let obstaclesFrozen = false;
 
     // Timer variables
     const GAME_DURATION_SECONDS = 120; // 2 minutes
@@ -63,8 +62,11 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
     const NUMBER_OF_OBSTACLES = 10; // Fixed number of obstacles for the level
     const OBSTACLE_SPACING_DISTANCE = 500; // Distance between obstacles (in pixels)
     const OBSTACLE_HEIGHT = 60; // Fixed height for obstacles
+    const COLLECTIBLE_SIZE = 20; // Size of collectibles
+    const NUMBER_OF_COLLECTIBLES = 20; // Number of collectibles per level
     let level = {
       obstacles: [],
+      collectibles: [], // New array for collectibles
       baseObstacleSpeed: 2, // Base speed for obstacles
       lanes: [0, 1, 2] // Lane indices
     };
@@ -175,6 +177,53 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
         });
       }
 
+      // Initialize collectibles
+      level.collectibles = [];
+      for (let i = 0; i < NUMBER_OF_COLLECTIBLES; i++) {
+          let collectibleX, collectibleY, collectibleLane;
+          let collidedWithObstacle = true;
+          let attempts = 0;
+
+          // Try to place collectible without colliding with an existing obstacle
+          while (collidedWithObstacle && attempts < 100) { // Limit attempts to prevent infinite loop
+              collectibleLane = level.lanes[Math.floor(Math.random() * level.lanes.length)];
+              collectibleX = overlayWidth + (i * OBSTACLE_SPACING_DISTANCE / 2) + Math.random() * overlayWidth; // Random X position within a wider range
+              collectibleY = LANE_HEIGHT * collectibleLane + LANE_HEIGHT / 2;
+
+              collidedWithObstacle = false;
+              for (const obstacle of level.obstacles) {
+                  const obstacleTop = (LANE_HEIGHT * obstacle.lane + LANE_HEIGHT / 2) - obstacle.height / 2;
+                  const obstacleBottom = (LANE_HEIGHT * obstacle.lane + LANE_HEIGHT / 2) + obstacle.height / 2;
+                  const obstacleLeft = obstacle.x - obstacle.width / 2;
+                  const obstacleRight = obstacle.x + obstacle.width / 2;
+
+                  const collectibleTop = collectibleY - COLLECTIBLE_SIZE / 2;
+                  const collectibleBottom = collectibleY + COLLECTIBLE_SIZE / 2;
+                  const collectibleLeft = collectibleX - COLLECTIBLE_SIZE / 2;
+                  const collectibleRight = collectibleX + COLLECTIBLE_SIZE / 2;
+
+                  const xOverlap = Math.max(0, Math.min(collectibleRight, obstacleRight) - Math.max(collectibleLeft, obstacleLeft));
+                  const yOverlap = Math.max(0, Math.min(collectibleBottom, obstacleBottom) - Math.max(collectibleTop, obstacleTop));
+
+                  if (xOverlap > 0 && yOverlap > 0) {
+                      collidedWithObstacle = true;
+                      break;
+                  }
+              }
+              attempts++;
+          }
+
+          if (!collidedWithObstacle) { // Only add if it didn't collide after attempts
+              level.collectibles.push({
+                  lane: collectibleLane,
+                  x: collectibleX,
+                  y: collectibleY, // Store center Y for collectibles
+                  size: COLLECTIBLE_SIZE,
+                  color: '#FFD700' // Gold color for collectibles
+              });
+          }
+      }
+
       lastTime = -1; frames = 0; lastFpsUpdate = performance.now();
       loop();
     }
@@ -263,7 +312,7 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
         return newState;
     }
 
-    function checkCollision(playerX, playerY, playerSize, obstacle) {
+    function checkCollision(playerX, playerY, playerSize, object) {
       // Player (circle): centerX, centerY, radius
       const playerRadius = playerSize / 2;
       const playerTop = playerY - playerRadius;
@@ -271,16 +320,27 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
       const playerLeft = playerX - playerRadius;
       const playerRight = playerX + playerRadius;
 
-      // Obstacle (rectangle): x (center), y (center), width, height
-      const obstacleTop = (LANE_HEIGHT * obstacle.lane + LANE_HEIGHT / 2) - obstacle.height / 2;
-      const obstacleBottom = (LANE_HEIGHT * obstacle.lane + LANE_HEIGHT / 2) + obstacle.height / 2;
-      const obstacleLeft = obstacle.x - obstacle.width / 2;
-      const obstacleRight = obstacle.x + obstacle.width / 2;
+      // Obstacle/Collectible (rectangle or circle for simplicity)
+      // For obstacles, we calculate based on its properties.
+      // For collectibles, we'll use its x, y, and size properties directly.
+      let objectTop, objectBottom, objectLeft, objectRight;
+
+      if (object.type) { // It's an obstacle
+          objectTop = (LANE_HEIGHT * object.lane + LANE_HEIGHT / 2) - object.height / 2;
+          objectBottom = (LANE_HEIGHT * object.lane + LANE_HEIGHT / 2) + object.height / 2;
+          objectLeft = object.x - object.width / 2;
+          objectRight = object.x + object.width / 2;
+      } else { // It's a collectible
+          objectTop = object.y - object.size / 2;
+          objectBottom = object.y + object.size / 2;
+          objectLeft = object.x - object.size / 2;
+          objectRight = object.x + object.size / 2;
+      }
 
       // Check for overlap on X axis
-      const xOverlap = Math.max(0, Math.min(playerRight, obstacleRight) - Math.max(playerLeft, obstacleLeft));
+      const xOverlap = Math.max(0, Math.min(playerRight, objectRight) - Math.max(playerLeft, objectLeft));
       // Check for overlap on Y axis
-      const yOverlap = Math.max(0, Math.min(playerBottom, obstacleBottom) - Math.max(playerTop, obstacleTop));
+      const yOverlap = Math.max(0, Math.min(playerBottom, objectBottom) - Math.max(playerTop, objectTop));
 
       // If both overlaps are greater than 0, there is a collision
       return xOverlap > 0 && yOverlap > 0;
@@ -375,6 +435,14 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
             mainCtx.fillRect(obstacleX + obstacle.width * 0.55, obstacleY + obstacle.height * 0.8, obstacle.width * 0.2, obstacle.height * 0.15);
             mainCtx.fillRect(obstacleX + obstacle.width * 0.8, obstacleY + obstacle.height * 0.8, obstacle.width * 0.15, obstacle.height * 0.15);
         }
+      });
+
+      // Draw collectibles
+      level.collectibles.forEach(collectible => {
+          mainCtx.fillStyle = collectible.color;
+          mainCtx.beginPath();
+          mainCtx.arc(collectible.x, collectible.y, collectible.size / 2, 0, Math.PI * 2);
+          mainCtx.fill();
       });
 
       // Draw brushing value as text (will appear un-mirrored on screen)
@@ -532,43 +600,52 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
 
         // Game logic updates
         // Move obstacles and check for collisions
-        let allObstaclesPassed = true;
-        for (let i = level.obstacles.length - 1; i >= 0; i--) {
-          const obstacle = level.obstacles[i];
-          // Use the smoothedBrushingImpact for obstacle movement
-          if (!obstaclesFrozen) {
-            const obstacleMovement = obstacle.speed + (smoothedBrushingImpact * BRUSHING_IMPACT_FACTOR);
-            obstacle.x -= obstacleMovement;
-            
-        }
-        let anyCollision = false;
+        let collidedObstacleIndex = -1;
+
         for (let i = 0; i < level.obstacles.length; i++) {
-            const obstacle = level.obstacles[i];
-            if (checkCollision(objectX, objectY, PLAYER_SIZE, obstacle)) {
-                anyCollision = true;
-                break;
+          const obstacle = level.obstacles[i];
+
+          // Use the smoothedBrushingImpact for obstacle movement
+          const obstacleMovement = obstacle.speed + (smoothedBrushingImpact * BRUSHING_IMPACT_FACTOR);
+          obstacle.x -= obstacleMovement;
+
+          if (checkCollision(objectX, objectY, PLAYER_SIZE, obstacle)) {
+            collidedObstacleIndex = i;
+          }
+        }
+
+        if(collidedObstacleIndex != -1){
+          const obstacle = level.obstacles[collidedObstacleIndex];
+          if(objectX < obstacle.x - obstacle.width/2){
+            const pushBack = objectX + PLAYER_SIZE/2 - (obstacle.x - obstacle.width/2);
+            for (let i = 0; i < level.obstacles.length; i++) {
+              const obstacle = level.obstacles[i];
+              obstacle.x += pushBack;
             }
-        }
-        obstaclesFrozen = anyCollision;
+          } else {
+            const obstacleY =  LANE_HEIGHT * obstacle.lane + LANE_HEIGHT / 2;
 
-
-        //   if (checkCollision(objectX, objectY, PLAYER_SIZE, obstacle)) {
-        //     gameOver = true;
-        //     ui.log.textContent = "Game Over! You hit an obstacle.";
-        //     break;
-        //   }
-        if (checkCollision(objectX, objectY, PLAYER_SIZE, obstacle)) {
-            ui.log.textContent = "Blocked! Move your hand to a clear lane to continue.";
-            obstaclesFrozen = true;
-            break;
+            if(objectY < obstacleY){
+              objectY = obstacleY - obstacle.height/2 - PLAYER_SIZE/2;
+            } else {
+              objectY = obstacleY + obstacle.height/2 + PLAYER_SIZE/2;
+            }
+            targetY = objectY;
+            lastValidTargetY = targetY;
+          }
         }
 
-        }
+        // Move collectibles and check for collisions
+        for (let i = level.collectibles.length - 1; i >= 0; i--) {
+            const collectible = level.collectibles[i];
+            const collectibleMovement = level.baseObstacleSpeed + (smoothedBrushingImpact * BRUSHING_IMPACT_FACTOR);
+            collectible.x -= collectibleMovement;
 
-        if (!gameOver && allObstaclesPassed && score === NUMBER_OF_OBSTACLES) {
-            gameWon = true;
-            gameOver = true; // Set game over to true so the win message displays
-            ui.log.textContent = "Congratulations! You passed all obstacles!";
+            if (checkCollision(objectX, objectY, PLAYER_SIZE, collectible)) {
+                score++;
+                ui.score.textContent = score;
+                level.collectibles.splice(i, 1); // Remove collected item
+            }
         }
 
 
@@ -593,8 +670,7 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
         ui.log.textContent = String(err);
         ui.startBtn.disabled = false;
         setLive(false);
-      }
-    });
+      }});
     ui.stopBtn.addEventListener('click', stopCamera);
 
     document.addEventListener('visibilitychange', () => {
