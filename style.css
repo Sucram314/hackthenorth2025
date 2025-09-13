@@ -1,0 +1,62 @@
+:root { --bg:#0b1020; --fg:#e8eef7; --accent:#5ad; --muted:#a8b3c7; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font: 15px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--fg); background: radial-gradient(1200px 600px at 20% -10%, #1a2340 0%, #0b1020 50%, #060914 100%);
+      min-height: 100dvh; display: grid; place-items: center; padding: 24px;
+    }
+    .card {
+      width: min(960px, 95vw);
+      background: #101933cc; backdrop-filter: blur(6px);
+      border: 1px solid #1e2a4d; border-radius: 18px; box-shadow: 0 15px 60px rgba(0,0,0,.35);
+      padding: 18px 18px 12px; position: relative;
+    }
+    .row { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    @media (min-width: 860px) { .row { grid-template-columns: 3fr 2fr; } }
+    h1 {
+      margin: 2px 0 8px; font-weight: 700; letter-spacing: .2px;
+      font-size: clamp(18px, 2.3vw, 26px);
+      display:flex; align-items:center; gap:10px;
+    }
+    .badge { font-size: 12px; color: var(--muted); }
+    .toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    button {
+      appearance: none; border: 1px solid #355; background: #0e1a33; color: var(--fg);
+      padding: 9px 12px; border-radius: 12px; cursor: pointer; font-weight: 600;
+    }
+    button.primary { background: linear-gradient(180deg, #2b6cff, #1d54c9); border-color: #1d54c9; }
+    button:disabled{ opacity:.6; cursor:not-allowed; }
+    .pill {
+      display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border:1px solid #2a3c69;
+      border-radius: 999px; color: var(--muted); font-size: 12px;
+    }
+    .stage {
+      position: relative; width: 100%; aspect-ratio: 16 / 9;
+      background: #060a18; border:1px solid #1b294f; border-radius:14px; overflow:hidden;
+      display: flex; justify-content: center; align-items: center;
+    }
+    /* Only the video will be truly hidden if we draw on overlay */
+    video { transform: scaleX(-1); position:absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; }
+    /* The overlay canvas will now be our main display */
+    #overlay {
+      position: absolute; inset: 0; width:100%; height:100%;
+      pointer-events: none; /* Allow interaction with elements behind if any */
+      transform: scaleX(-1); /* Mirror the canvas content to match video selfie view */
+    }
+    /* We no longer need a separate gameCanvas */
+    #gameCanvas {
+      display: none; /* Hide the gameCanvas as we're drawing on overlay */
+    }
+    .watermark {
+      position:absolute; top:8px; right:10px; font-size:12px; color:#cfe3ff; opacity:.8;
+      background:#0b1430aa; padding:6px 8px; border-radius:10px; border:1px solid #1e2a4d;
+      z-index: 10; /* Ensure watermark is on top */
+      transform: scaleX(-1); /* Un-mirror watermark text */
+    }
+    .log {
+      padding: 10px 12px; border:1px dashed #28407a; border-radius:12px; color: #c9d7ee; background:#0d162e;
+      min-height: 64px; white-space:pre-wrap;
+    }
+    a { color:#9bd; }
+    footer { margin-top: 8px; color: var(--muted); font-size: 12px; }
+    .dot { width:8px; height:8px; border-radius:50%; display:inline-block; background:#7f8; box-shadow:0 0 0 3px #122; }
