@@ -93,7 +93,6 @@ export default function GameCanvas({ playing }) {
       playerunhappy2.current = u2;
     };
     u2.src = "/unhappy2.png";
-
   }, []);
 
   const canvasRef = useRef(null);
@@ -127,6 +126,7 @@ export default function GameCanvas({ playing }) {
       obstacles: [],
       collectibles: [],
       baseObstacleSpeed: 2,
+      laneLineOffset: 0, // Track horizontal offset for lane line animation
     };
   }
 
@@ -139,7 +139,7 @@ export default function GameCanvas({ playing }) {
     setWalkState(false);
 
     const t2 = setInterval(() => {
-      setWalkState((s)=>!s);
+      setWalkState((s) => !s);
     }, 300);
 
     const t = setInterval(() => {
@@ -270,6 +270,13 @@ export default function GameCanvas({ playing }) {
       const boost = Math.max(0, brushRef.current);
       let collidedIdx = -1;
 
+      // Update lane line offset for animation (moves left with same speed as obstacles)
+      S.laneLineOffset += S.baseObstacleSpeed + boost;
+      // Reset offset when it goes beyond the dash pattern length (36px total: 18px dash + 18px gap)
+      if (S.laneLineOffset <= -36) {
+        S.laneLineOffset = 0;
+      }
+
       for (let i = S.obstacles.length - 1; i >= 0; i--) {
         const o = S.obstacles[i];
         o.x -= S.baseObstacleSpeed + boost;
@@ -360,10 +367,11 @@ export default function GameCanvas({ playing }) {
       ctx.fillStyle = "#242424";
       ctx.fillRect(0, 0, W, H);
 
-      // lanes
+      // lanes - animated with offset for seamless looping
       ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
-      ctx.setLineDash([18, 18]); // 10px dash, 10px gap
+      ctx.setLineDash([18, 18]); // 18px dash, 18px gap
       ctx.lineWidth = 2;
+      ctx.lineDashOffset = S.laneLineOffset; // Apply the animated offset
       ctx.beginPath();
 
       ctx.moveTo(0, S.laneH);
@@ -373,8 +381,17 @@ export default function GameCanvas({ playing }) {
       ctx.lineTo(W + 40, S.laneH * 2);
       ctx.stroke();
 
+      // Reset line dash offset for other drawing operations
+      ctx.lineDashOffset = 0;
+
       // player
-      ctx.drawImage((walkState ? playerhappy1.current : playerhappy2.current),S.x-PLAYER_SIZE/2,S.y-PLAYER_SIZE/2,PLAYER_SIZE,PLAYER_SIZE);
+      ctx.drawImage(
+        walkState ? playerhappy1.current : playerhappy2.current,
+        S.x - PLAYER_SIZE / 2,
+        S.y - PLAYER_SIZE / 2,
+        PLAYER_SIZE,
+        PLAYER_SIZE
+      );
 
       // obstacles
       for (const o of S.obstacles) {
