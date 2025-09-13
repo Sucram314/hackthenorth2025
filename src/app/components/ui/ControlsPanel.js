@@ -13,7 +13,7 @@ export default function ControlsPanel() {
         <p className="mt-3 text-sm text-muted-foreground">
           Brush different sides of your teeth to switch lanes.<br />
           Collect coins and avoid vehicles.<br />
-          Don't stop brushing or you'll get caught by the Candy!
+          Don&apos;t stop brushing or you&apos;ll get caught by the Candy!
         </p>
         {/* <p className="mt-2 text-xs text-muted-foreground">
           Hands detected: {handCount}
