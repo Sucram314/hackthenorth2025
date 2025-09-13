@@ -469,8 +469,10 @@ export default function GameCanvas({ playing }) {
       }
 
       // HUD
-      ctx.fillStyle = "#e5e7eb";
-      ctx.font = "14px ui-sans-serif, system-ui, -apple-system";
+      ctx.fillStyle = "#c67de0";
+      ctx.font = "12px 'Press Start 2P', monospace"; // smaller sizes look better due to pixel font
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#000";
       ctx.fillText(`Score: ${score}`, 12, 22);
       ctx.fillText(
         `Time: ${String(Math.floor(timeLeft / 60)).padStart(2, "0")}:${String(
@@ -479,16 +481,16 @@ export default function GameCanvas({ playing }) {
         12,
         42
       );
-      ctx.fillText(`Boost: ${brushRef.current.toFixed(2)}`, 12, 62);
-      ctx.fillText(`Lane: ${laneRef.current}`, 12, 82);
+      // ctx.fillText(`Boost: ${brushRef.current.toFixed(2)}`, 12, 62);
+      // ctx.fillText(`Lane: ${laneRef.current}`, 12, 82);
       if (!live) ctx.fillText(`Camera: off`, 12, 102);
 
       if (showGameOver) {
-        ctx.fillStyle = "rgba(255,0,0,0.7)";
+        ctx.fillStyle = "rgba(104, 194, 211, 0.9)";
         ctx.font = "bold 48px ui-sans-serif, system-ui, -apple-system";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText("GAME OVER!", W / 2, H / 2);
+        ctx.fillText("You did it! 😁", W / 2, H / 2);
         ctx.font = "bold 24px ui-sans-serif, system-ui, -apple-system";
         ctx.textAlign = "left";
       }
