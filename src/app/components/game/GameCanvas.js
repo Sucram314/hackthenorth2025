@@ -163,30 +163,6 @@ export default function GameCanvas({ playing }) {
     return dx * dx + dy * dy <= r * r;
   }
 
-  // main game loop
-  useEffect(() => {
-    if (!playing) return;
-
-    const ctx = canvasRef.current.getContext("2d");
-    let prev = 0;
-
-    function step(ts) {
-      if (gameOver) {
-        draw(ctx, true);
-        return;
-      }
-      const dt = (ts - prev) / 16.67; // ~ frames
-      prev = ts;
-
-      update(dt);
-      draw(ctx, false);
-      rafRef.current = requestAnimationFrame(step);
-    }
-    rafRef.current = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(rafRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playing, gameOver]);
-
   function update() {
     const S = stateRef.current;
 
@@ -392,6 +368,29 @@ export default function GameCanvas({ playing }) {
       ctx.textAlign = "left";
     }
   }
+
+  // main game loop
+  useEffect(() => {
+    if (!playing) return;
+
+    const ctx = canvasRef.current.getContext("2d");
+    let prev = 0;
+
+    function step(ts) {
+      if (gameOver) {
+        draw(ctx, true);
+        return;
+      }
+      const dt = (ts - prev) / 16.67; // ~ frames
+      prev = ts;
+
+      update(dt);
+      draw(ctx, false);
+      rafRef.current = requestAnimationFrame(step);
+    }
+    rafRef.current = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [playing, gameOver, score, timeLeft, live, draw, update]);
 
   return (
     <canvas
