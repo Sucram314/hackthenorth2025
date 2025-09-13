@@ -84,7 +84,7 @@ export default function WebcamGestureMP() {
     }
 
     let newState;
-    if (pitch < upTh) newState = LANE.DOWN;   // selfie view reversal
+    if (pitch < upTh) newState = LANE.DOWN; // selfie view reversal
     else if (pitch > downTh) newState = LANE.UP;
     else newState = LANE.FRONT;
 
@@ -126,7 +126,11 @@ export default function WebcamGestureMP() {
     try {
       await ensureDetector();
       streamRef.current = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 360 } },
+        video: {
+          facingMode: "user",
+          width: { ideal: 640 },
+          height: { ideal: 360 },
+        },
         audio: false,
       });
       const v = videoRef.current;
@@ -192,9 +196,15 @@ export default function WebcamGestureMP() {
       const lm = res.landmarks[0]; // single hand
       setHandCount(res.landmarks.length);
 
-      // draw landmarks (on mirrored video we still overlay in screen space)
-      drawer.drawConnectors(lm, HandLandmarker.HAND_CONNECTIONS, { lineWidth: 2 });
+      // draw landmarks (mirror connectors to match mirrored video)
+      ctx.save();
+      ctx.scale(-1, 1);
+      ctx.translate(-c.width, 0);
+      drawer.drawConnectors(lm, HandLandmarker.HAND_CONNECTIONS, {
+        lineWidth: 2,
+      });
       drawer.drawLandmarks(lm, { radius: 2 });
+      ctx.restore();
 
       const rot = estimateHandRotation(lm);
       const newLane = getLaneFromPitch(rot.pitch);
@@ -203,13 +213,21 @@ export default function WebcamGestureMP() {
       // depth-scaled “brushing”
       const wristX = lm[0].x * c.width;
       const wristZ = lm[0].z;
-      depthScale = Math.max(0.5, Math.min(Math.pow(REFERENCE_DEPTH_Z / wristZ, DEPTH_SCALING_FACTOR), 3.0));
+      depthScale = Math.max(
+        0.5,
+        Math.min(
+          Math.pow(REFERENCE_DEPTH_Z / wristZ, DEPTH_SCALING_FACTOR),
+          3.0
+        )
+      );
 
       handX.current.push(wristX);
       if (handX.current.length > HISTORY_SIZE) handX.current.shift();
 
       if (handX.current.length === HISTORY_SIZE) {
-        let minX = handX.current[0], maxX = handX.current[0], total = 0;
+        let minX = handX.current[0],
+          maxX = handX.current[0],
+          total = 0;
         for (let i = 1; i < HISTORY_SIZE; i++) {
           const x = handX.current[i];
           const px = handX.current[i - 1];
@@ -218,7 +236,7 @@ export default function WebcamGestureMP() {
           total += Math.abs(x - px);
         }
         const range = maxX - minX;
-        const currentBrushing = ((range * 0.01) + (total * 0.005)) * depthScale;
+        const currentBrushing = (range * 0.01 + total * 0.005) * depthScale;
         if (currentBrushing > brushingValue.current) {
           brushingValue.current = currentBrushing;
         }
@@ -230,13 +248,20 @@ export default function WebcamGestureMP() {
 
     // smoothing to publish
     smoothedImpact.current =
-      smoothedImpact.current * (1 - SMOOTHING_ALPHA) + brushingValue.current * SMOOTHING_ALPHA;
+      smoothedImpact.current * (1 - SMOOTHING_ALPHA) +
+      brushingValue.current * SMOOTHING_ALPHA;
     setBrush(smoothedImpact.current * BRUSHING_IMPACT_FACTOR); // publish scaled value (same factor as game expects)
 
     // HUD text
     ctx.fillStyle = "#fff";
     ctx.font = "12px ui-sans-serif, system-ui, -apple-system";
-    ctx.fillText(`Brushing: ${brushingValue.current.toFixed(2)}  (smoothed*impact: ${smoothedImpact.current.toFixed(2)})`, 10, 18);
+    ctx.fillText(
+      `Brushing: ${brushingValue.current.toFixed(
+        2
+      )}  (smoothed*impact: ${smoothedImpact.current.toFixed(2)})`,
+      10,
+      18
+    );
 
     rafRef.current = requestAnimationFrame(loop);
   }
@@ -246,17 +271,31 @@ export default function WebcamGestureMP() {
       <div className="flex items-center justify-between">
         <p className="text-sm text-neutral-300">Web cam</p>
         <div className="flex gap-2">
-          <button onClick={start} disabled={loading} className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm">
+          <button
+            onClick={start}
+            disabled={loading}
+            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm"
+          >
             {loading ? "Loading…" : "Start"}
           </button>
-          <button onClick={stop} className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-sm">Stop</button>
+          <button
+            onClick={stop}
+            className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-sm"
+          >
+            Stop
+          </button>
         </div>
       </div>
 
       {err && <p className="mt-2 text-sm text-red-300">{err}</p>}
 
       <div className="relative mt-3 aspect-video rounded-xl overflow-hidden bg-neutral-800">
-        <video ref={videoRef} className="absolute inset-0 h-full w-full object-cover" playsInline muted />
+        <video
+          ref={videoRef}
+          className="absolute inset-0 h-full w-full object-cover"
+          playsInline
+          muted
+        />
         <canvas ref={canRef} className="absolute inset-0 h-full w-full" />
       </div>
 
