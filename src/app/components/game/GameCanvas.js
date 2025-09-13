@@ -69,11 +69,6 @@ export default function GameCanvas({ playing }) {
         img.src = config.src;
       }
     });
-    const img = new Image();
-    img.onload = () => {
-      truckImageRef.current = img;
-    };
-    img.src = "/truck-kun.png";
 
     const h1 = new Image();
     h1.onload = () => {
