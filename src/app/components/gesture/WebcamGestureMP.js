@@ -1,5 +1,12 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  forwardRef,
+  useImperativeHandle,
+  useCallback,
+} from "react";
 import { useGesture, LANE } from "./GestureContext";
 
 /**
@@ -8,10 +15,15 @@ import { useGesture, LANE } from "./GestureContext";
  * - Brushing value with decay + smoothing (+ depth scaling)
  * - Hand count + simple landmark overlay
  *
- * UI: Start/Stop buttons + small video/overlay tile.
+ * UI: Small video/overlay tile (start button moved to parent).
  */
-export default function WebcamGestureMP() {
-  const { setLive, setLane, setBrush, setHandCount } = useGesture();
+const WebcamGestureMP = forwardRef((props, ref) => {
+  const gestureContext = useGesture();
+  const setLive = gestureContext?.setLive;
+  const setLane = gestureContext?.setLane;
+  const setBrush = gestureContext?.setBrush;
+  const setHandCount = gestureContext?.setHandCount;
+  const live = gestureContext?.live ?? false;
 
   const videoRef = useRef(null);
   const canRef = useRef(null);
@@ -20,6 +32,35 @@ export default function WebcamGestureMP() {
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+
+  // Expose start function to parent component
+  useImperativeHandle(ref, () => ({
+    start: async () => {
+      try {
+        await ensureDetector();
+        streamRef.current = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "user",
+            width: { ideal: 640 },
+            height: { ideal: 360 },
+          },
+          audio: false,
+        });
+        const v = videoRef.current;
+        v.srcObject = streamRef.current;
+        await v.play();
+
+        setLive(true);
+        setErr("");
+
+        loop();
+      } catch (e) {
+        setErr(e?.message || String(e));
+        stop();
+        throw e;
+      }
+    },
+  }));
 
   // ===== Model/Drawer holders (lazy-loaded from CDN) =====
   const detectorRef = useRef(null);
@@ -122,32 +163,7 @@ export default function WebcamGestureMP() {
     return detectorRef.current;
   }
 
-  async function start() {
-    try {
-      await ensureDetector();
-      streamRef.current = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "user",
-          width: { ideal: 640 },
-          height: { ideal: 360 },
-        },
-        audio: false,
-      });
-      const v = videoRef.current;
-      v.srcObject = streamRef.current;
-      await v.play();
-
-      setLive(true);
-      setErr("");
-
-      loop();
-    } catch (e) {
-      setErr(e?.message || String(e));
-      stop();
-    }
-  }
-
-  function stop() {
+  const stop = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
     setLive(false);
     setHandCount(0);
@@ -157,11 +173,11 @@ export default function WebcamGestureMP() {
     }
     const ctx = canRef.current?.getContext("2d");
     if (ctx) ctx.clearRect(0, 0, canRef.current.width, canRef.current.height);
-  }
+  }, [setLive, setHandCount]);
 
   useEffect(() => {
     return () => stop();
-  }, []);
+  }, [stop]);
 
   // ====== main loop (detect + publish) ======
   async function loop() {
@@ -270,21 +286,6 @@ export default function WebcamGestureMP() {
     <div className="rounded-2xl bg-neutral-900 ring-1 ring-neutral-800 p-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-neutral-300">Web cam</p>
-        <div className="flex gap-2">
-          <button
-            onClick={start}
-            disabled={loading}
-            className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-sm"
-          >
-            {loading ? "Loading…" : "Start"}
-          </button>
-          <button
-            onClick={stop}
-            className="px-3 py-1.5 rounded-lg bg-neutral-800 hover:bg-neutral-700 text-sm"
-          >
-            Stop
-          </button>
-        </div>
       </div>
 
       {err && <p className="mt-2 text-sm text-red-300">{err}</p>}
@@ -304,4 +305,8 @@ export default function WebcamGestureMP() {
       </p>
     </div>
   );
-}
+});
+
+WebcamGestureMP.displayName = "WebcamGestureMP";
+
+export default WebcamGestureMP;

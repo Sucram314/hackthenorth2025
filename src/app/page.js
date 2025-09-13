@@ -1,16 +1,36 @@
 "use client";
-import { useState } from "react";
-import { GestureProvider, useGesture } from "@/app/components/gesture/GestureContext";
+import { useState, useRef } from "react";
+import {
+  GestureProvider,
+  useGesture,
+} from "@/app/components/gesture/GestureContext";
 import HeaderNav from "@/app/components/ui/HeaderNav";
 import ControlsPanel from "@/app/components/ui/ControlsPanel";
 import GameCanvas from "@/app/components/game/GameCanvas";
+import WebcamGestureMP from "@/app/components/gesture/WebcamGestureMP";
 
 function HomeInner() {
-  const { live } = useGesture();
+  const gestureContext = useGesture();
+  const live = gestureContext?.live ?? false;
   const [playing, setPlaying] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const webcamRef = useRef(null);
 
   // Auto-start game when camera goes live (optional quality-of-life)
   if (live && !playing) setTimeout(() => setPlaying(true), 0);
+
+  const handleStartCamera = async () => {
+    if (webcamRef.current) {
+      setLoading(true);
+      try {
+        await webcamRef.current.start();
+      } catch (error) {
+        console.error("Failed to start camera:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
 
   return (
     <>
@@ -18,26 +38,27 @@ function HomeInner() {
       <main className="mx-auto max-w-7xl px-6 py-8">
         <div className="grid grid-cols-12 gap-6">
           <section className="col-span-12 lg:col-span-8">
-            <div className="rounded-2xl ring-1 ring-neutral-800 bg-neutral-900 p-3">
+            <div className="relative rounded-2xl ring-1 ring-neutral-800 bg-neutral-900 p-3">
               <GameCanvas playing={playing} />
-            </div>
-
-            <div className="mt-6">
-              <h1 className="text-2xl font-semibold">Game Title</h1>
-              <p className="mt-2 text-sm text-neutral-400">
-                Hand-gesture lane runner. Camera controls the player.
-              </p>
-              <button
-                onClick={() => setPlaying((v) => !v)}
-                className="mt-4 inline-flex items-center justify-center rounded-xl bg-indigo-600 hover:bg-indigo-500 transition px-6 py-3 font-medium"
-              >
-                {playing ? "Pause" : "Play"}
-              </button>
+              {live === false && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-2xl">
+                  <button
+                    onClick={handleStartCamera}
+                    disabled={loading}
+                    className="px-6 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? "Loading…" : "Start Camera"}
+                  </button>
+                </div>
+              )}
             </div>
           </section>
 
           <section className="col-span-12 lg:col-span-4">
             <ControlsPanel />
+            <div className="mt-6">
+              <WebcamGestureMP ref={webcamRef} />
+            </div>
           </section>
         </div>
       </main>

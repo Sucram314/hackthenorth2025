@@ -12,12 +12,19 @@ import { useGesture, LANE } from "../gesture/GestureContext";
  * - Lane selection driven by pitch (up/front/down)
  */
 export default function GameCanvas({ playing }) {
-  const { lane, brush, live } = useGesture();
+  const gestureContext = useGesture();
+  const lane = gestureContext?.lane ?? LANE.FRONT;
+  const brush = gestureContext?.brush ?? 0;
+  const live = gestureContext?.live ?? false;
   const laneRef = useRef(lane);
   const brushRef = useRef(brush);
 
-  useEffect(() => { laneRef.current = lane; }, [lane]);
-  useEffect(() => { brushRef.current = brush; }, [brush]);
+  useEffect(() => {
+    laneRef.current = lane;
+  }, [lane]);
+  useEffect(() => {
+    brushRef.current = brush;
+  }, [brush]);
 
   const canvasRef = useRef(null);
   const rafRef = useRef(0);
@@ -26,7 +33,8 @@ export default function GameCanvas({ playing }) {
   const [gameOver, setGameOver] = useState(false);
 
   // --- dimensions / constants (adapted from PoC) ---
-  const W = 960, H = 540;
+  const W = 960,
+    H = 540;
   const PLAYER_SIZE = 40;
   const OBSTACLE_HEIGHT = 60;
   const COLLECTIBLE_SIZE = 20;
@@ -38,12 +46,13 @@ export default function GameCanvas({ playing }) {
   const stateRef = useRef(null);
   if (!stateRef.current) {
     stateRef.current = {
-      lanes: [0,1,2],
+      lanes: [0, 1, 2],
       laneH: H / 3,
       x: W / 4,
       y: (H / 3) * 1.5,
       ty: (H / 3) * 1.5,
-      vx: 0, vy: 0,
+      vx: 0,
+      vy: 0,
       obstacles: [],
       collectibles: [],
       baseObstacleSpeed: 2,
@@ -93,7 +102,7 @@ export default function GameCanvas({ playing }) {
 
   function obstacleSpec() {
     const types = [
-      { type: "car",   mult: 2, color: "#e84c3d" },
+      { type: "car", mult: 2, color: "#e84c3d" },
       { type: "truck", mult: 3, color: "#f1c40f" },
       { type: "train", mult: 4, color: "#3498db" },
     ];
@@ -104,7 +113,14 @@ export default function GameCanvas({ playing }) {
     const spec = obstacleSpec();
     const lane = S.lanes[Math.floor(Math.random() * S.lanes.length)];
     const width = OBSTACLE_HEIGHT * spec.mult;
-    return { lane, x: initialX + width, height: OBSTACLE_HEIGHT, width, color: spec.color, type: spec.type };
+    return {
+      lane,
+      x: initialX + width,
+      height: OBSTACLE_HEIGHT,
+      width,
+      color: spec.color,
+      type: spec.type,
+    };
   }
 
   function createCollectible(initialX, S) {
@@ -117,10 +133,12 @@ export default function GameCanvas({ playing }) {
       // avoid overlap with any obstacle
       const hit = S.obstacles.some((o) => {
         const oy = S.laneH * o.lane + S.laneH / 2;
-        return !(x + COLLECTIBLE_SIZE/2 < o.x - o.width/2 ||
-                 x - COLLECTIBLE_SIZE/2 > o.x + o.width/2 ||
-                 y + COLLECTIBLE_SIZE/2 < oy - o.height/2 ||
-                 y - COLLECTIBLE_SIZE/2 > oy + o.height/2);
+        return !(
+          x + COLLECTIBLE_SIZE / 2 < o.x - o.width / 2 ||
+          x - COLLECTIBLE_SIZE / 2 > o.x + o.width / 2 ||
+          y + COLLECTIBLE_SIZE / 2 < oy - o.height / 2 ||
+          y - COLLECTIBLE_SIZE / 2 > oy + o.height / 2
+        );
       });
       if (!hit) return { lane, x, y, size: COLLECTIBLE_SIZE, color: "#FFD700" };
     }
@@ -134,11 +152,15 @@ export default function GameCanvas({ playing }) {
   }
 
   function circleRectCollision(cx, cy, r, rx, ry, rw, rh) {
-    const left = rx, right = rx + rw, top = ry, bottom = ry + rh;
+    const left = rx,
+      right = rx + rw,
+      top = ry,
+      bottom = ry + rh;
     const nearestX = Math.max(left, Math.min(cx, right));
     const nearestY = Math.max(top, Math.min(cy, bottom));
-    const dx = cx - nearestX, dy = cy - nearestY;
-    return dx*dx + dy*dy <= r*r;
+    const dx = cx - nearestX,
+      dy = cy - nearestY;
+    return dx * dx + dy * dy <= r * r;
   }
 
   // main game loop
@@ -184,7 +206,17 @@ export default function GameCanvas({ playing }) {
       // collision
       const oy = S.laneH * o.lane + S.laneH / 2;
       const ox = o.x - o.width / 2;
-      if (circleRectCollision(S.x, S.y, PLAYER_SIZE / 2, ox, oy - o.height/2, o.width, o.height)) {
+      if (
+        circleRectCollision(
+          S.x,
+          S.y,
+          PLAYER_SIZE / 2,
+          ox,
+          oy - o.height / 2,
+          o.width,
+          o.height
+        )
+      ) {
         collidedIdx = i;
       }
 
@@ -202,12 +234,12 @@ export default function GameCanvas({ playing }) {
       const o = S.obstacles[collidedIdx];
       const oy = S.laneH * o.lane + S.laneH / 2;
       if (S.x < o.x - o.width / 2) {
-        const push = S.x + PLAYER_SIZE/2 - (o.x - o.width/2);
+        const push = S.x + PLAYER_SIZE / 2 - (o.x - o.width / 2);
         for (const ob of S.obstacles) ob.x += push;
         for (const co of S.collectibles) co.x += push;
       } else {
-        if (S.y < oy) S.y = oy - o.height/2 - PLAYER_SIZE/2;
-        else S.y = oy + o.height/2 + PLAYER_SIZE/2;
+        if (S.y < oy) S.y = oy - o.height / 2 - PLAYER_SIZE / 2;
+        else S.y = oy + o.height / 2 + PLAYER_SIZE / 2;
         S.ty = S.y;
       }
     }
@@ -218,7 +250,17 @@ export default function GameCanvas({ playing }) {
       c.x -= S.baseObstacleSpeed + boost;
 
       // collide
-      if (circleRectCollision(S.x, S.y, PLAYER_SIZE/2, c.x - c.size/2, c.y - c.size/2, c.size, c.size)) {
+      if (
+        circleRectCollision(
+          S.x,
+          S.y,
+          PLAYER_SIZE / 2,
+          c.x - c.size / 2,
+          c.y - c.size / 2,
+          c.size,
+          c.size
+        )
+      ) {
         setScore((s) => s + 1);
         S.collectibles.splice(i, 1);
         const last = S.collectibles[S.collectibles.length - 1];
@@ -229,7 +271,7 @@ export default function GameCanvas({ playing }) {
       }
 
       // recycle off-screen
-      if (c.x + c.size/2 < 0) {
+      if (c.x + c.size / 2 < 0) {
         S.collectibles.splice(i, 1);
         const last = S.collectibles[S.collectibles.length - 1];
         const newX = last ? last.x + COLLECTIBLE_SPACING : W;
@@ -259,37 +301,67 @@ export default function GameCanvas({ playing }) {
 
     // player
     ctx.beginPath();
-    ctx.arc(S.x, S.y, PLAYER_SIZE/2, 0, Math.PI * 2);
+    ctx.arc(S.x, S.y, PLAYER_SIZE / 2, 0, Math.PI * 2);
     ctx.fillStyle = "#5ad";
     ctx.fill();
 
     // obstacles
     for (const o of S.obstacles) {
       const cy = S.laneH * o.lane + S.laneH / 2;
-      const ox = o.x - o.width/2;
-      const oy = cy - o.height/2;
+      const ox = o.x - o.width / 2;
+      const oy = cy - o.height / 2;
       ctx.fillStyle = o.color;
       ctx.fillRect(ox, oy, o.width, o.height);
 
       // minimal “details” (car/truck/train) as in PoC
       ctx.fillStyle = "rgba(0,0,0,0.5)";
       if (o.type === "car") {
-        ctx.fillRect(ox + o.width*0.2, oy + o.height*0.1, o.width*0.6, o.height*0.3);
-        ctx.fillRect(ox + o.width*0.2, oy + o.height*0.6, o.width*0.6, o.height*0.3);
+        ctx.fillRect(
+          ox + o.width * 0.2,
+          oy + o.height * 0.1,
+          o.width * 0.6,
+          o.height * 0.3
+        );
+        ctx.fillRect(
+          ox + o.width * 0.2,
+          oy + o.height * 0.6,
+          o.width * 0.6,
+          o.height * 0.3
+        );
       } else if (o.type === "truck") {
-        ctx.fillRect(ox, oy, o.width*0.3, o.height);
+        ctx.fillRect(ox, oy, o.width * 0.3, o.height);
       } else if (o.type === "train") {
-        ctx.fillRect(ox + o.width*0.1, oy + o.height*0.2, o.width*0.15, o.height*0.6);
-        ctx.fillRect(ox + o.width*0.3, oy + o.height*0.2, o.width*0.15, o.height*0.6);
-        ctx.fillRect(ox + o.width*0.5, oy + o.height*0.2, o.width*0.15, o.height*0.6);
-        ctx.fillRect(ox + o.width*0.7, oy + o.height*0.2, o.width*0.15, o.height*0.6);
+        ctx.fillRect(
+          ox + o.width * 0.1,
+          oy + o.height * 0.2,
+          o.width * 0.15,
+          o.height * 0.6
+        );
+        ctx.fillRect(
+          ox + o.width * 0.3,
+          oy + o.height * 0.2,
+          o.width * 0.15,
+          o.height * 0.6
+        );
+        ctx.fillRect(
+          ox + o.width * 0.5,
+          oy + o.height * 0.2,
+          o.width * 0.15,
+          o.height * 0.6
+        );
+        ctx.fillRect(
+          ox + o.width * 0.7,
+          oy + o.height * 0.2,
+          o.width * 0.15,
+          o.height * 0.6
+        );
       }
     }
 
     // collectibles
     for (const c of S.collectibles) {
       ctx.beginPath();
-      ctx.arc(c.x, c.y, c.size/2, 0, Math.PI * 2);
+      ctx.arc(c.x, c.y, c.size / 2, 0, Math.PI * 2);
       ctx.fillStyle = c.color;
       ctx.fill();
     }
@@ -298,9 +370,15 @@ export default function GameCanvas({ playing }) {
     ctx.fillStyle = "#e5e7eb";
     ctx.font = "14px ui-sans-serif, system-ui, -apple-system";
     ctx.fillText(`Score: ${score}`, 12, 22);
-    ctx.fillText(`Time: ${String(Math.floor(timeLeft/60)).padStart(2,"0")}:${String(timeLeft%60).padStart(2,"0")}`, 12, 42);
-  ctx.fillText(`Boost: ${brushRef.current.toFixed(2)}`, 12, 62);
-  ctx.fillText(`Lane: ${laneRef.current}`, 12, 82);
+    ctx.fillText(
+      `Time: ${String(Math.floor(timeLeft / 60)).padStart(2, "0")}:${String(
+        timeLeft % 60
+      ).padStart(2, "0")}`,
+      12,
+      42
+    );
+    ctx.fillText(`Boost: ${brushRef.current.toFixed(2)}`, 12, 62);
+    ctx.fillText(`Lane: ${laneRef.current}`, 12, 82);
     if (!live) ctx.fillText(`Camera: off`, 12, 102);
 
     if (showGameOver) {
@@ -308,9 +386,9 @@ export default function GameCanvas({ playing }) {
       ctx.font = "bold 48px ui-sans-serif, system-ui, -apple-system";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("GAME OVER!", W/2, H/2);
+      ctx.fillText("GAME OVER!", W / 2, H / 2);
       ctx.font = "bold 24px ui-sans-serif, system-ui, -apple-system";
-      ctx.fillText("Start the camera to play again.", W/2, H/2 + 40);
+      ctx.fillText("Start the camera to play again.", W / 2, H / 2 + 40);
       ctx.textAlign = "left";
     }
   }
