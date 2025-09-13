@@ -6,8 +6,8 @@ export default function ControlsPanel() {
   const { handCount } = useGesture();
   return (
     <aside className="space-y-6">
-      <div className="rounded-2xl ring-1 ring-border bg-card p-6">
-        <h2 className="pixel-text">
+      <div className="controls-panel bg-card p-6">
+        <h2>
           Ready to hack the plaque?
         </h2>
         <p className="mt-3 text-sm text-muted-foreground">
