@@ -285,7 +285,7 @@ const WebcamGestureMP = forwardRef((props, ref) => {
   return (
     <div className="rounded-2xl bg-card ring-1 ring-border p-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">Web cam</p>
+        <p className="pixel-text">Camera</p>
       </div>
 
       {err && <p className="mt-2 text-sm text-destructive">{err}</p>}
@@ -300,9 +300,9 @@ const WebcamGestureMP = forwardRef((props, ref) => {
         <canvas ref={canRef} className="absolute inset-0 h-full w-full" />
       </div>
 
-      <p className="mt-2 text-xs text-muted-foreground">
+      {/* <p className="mt-2 text-xs text-muted-foreground">
         Uses MediaPipe Tasks Vision (Hands). Allow camera access.
-      </p>
+      </p> */}
     </div>
   );
 });
