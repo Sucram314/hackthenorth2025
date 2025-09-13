@@ -38,7 +38,7 @@ function HomeInner() {
       <main className="mx-auto max-w-7xl px-6 py-8">
         <div className="grid grid-cols-12 gap-6">
           <section className="col-span-12 lg:col-span-8">
-            <div className="relative rounded-2xl ring-1 ring-neutral-800 bg-neutral-900 p-3">
+            <div className="relative rounded-2xl ring-1 ring-border bg-card p-3">
               <GameCanvas playing={playing} />
               {live === false && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-2xl">
