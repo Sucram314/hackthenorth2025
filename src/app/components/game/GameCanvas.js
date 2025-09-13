@@ -650,7 +650,7 @@ export default function GameCanvas({ playing, onRestart }) {
         ref={canvasRef}
         width={W}
         height={H}
-        className="w-full max-w-4xl aspect-[16/9] rounded-2xl bg-neutral-900 ring-1 ring-neutral-800"
+        className="w-full max-w-4xl aspect-[16/9] rounded-xl bg-neutral-900 ring-1 ring-neutral-800"
       />
       {showRestartButton && (
         <div className="absolute inset-0 flex flex-col items-center justify-end rounded-2xl">
