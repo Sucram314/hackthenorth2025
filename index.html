@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -139,6 +140,7 @@
     let objectY;
     let targetY;
     let objectX;
+    let lastValidTargetY; // New variable to store the last valid targetY
 
     // Brushing detection variables
     const HISTORY_SIZE = 10;
@@ -162,10 +164,10 @@
     // Level definition and state
     const NUMBER_OF_OBSTACLES = 10; // Fixed number of obstacles for the level
     const OBSTACLE_SPACING_DISTANCE = 500; // Distance between obstacles (in pixels)
+    const OBSTACLE_HEIGHT = 60; // Fixed height for obstacles
     let level = {
       obstacles: [],
       baseObstacleSpeed: 2, // Base speed for obstacles
-      obstacleSize: 100, // Default obstacle size
       lanes: [0, 1, 2] // Lane indices
     };
 
@@ -219,6 +221,7 @@
       objectY = LANE_HEIGHT * 1.5;
       targetY = objectY;
       objectX = overlayWidth / 4;
+      lastValidTargetY = targetY; // Initialize lastValidTargetY
 
       handXPositions = [];
       brushingValue = 0;
@@ -228,13 +231,25 @@
       // Initialize obstacles based on number and spacing
       level.obstacles = [];
       ui.totalObstacles.textContent = NUMBER_OF_OBSTACLES;
+      const obstacleTypes = [
+          { type: 'car', multiplier: 2, color: '#e84c3d' }, // Red car
+          { type: 'truck', multiplier: 3, color: '#f1c40f' }, // Yellow truck
+          { type: 'train', multiplier: 4, color: '#3498db' }  // Blue train
+      ];
+
       for (let i = 0; i < NUMBER_OF_OBSTACLES; i++) {
         const randomLane = level.lanes[Math.floor(Math.random() * level.lanes.length)];
+        const randomObstacleType = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+        const obstacleWidth = OBSTACLE_HEIGHT * randomObstacleType.multiplier;
+
         level.obstacles.push({
           lane: randomLane,
-          x: overlayWidth + (i * OBSTACLE_SPACING_DISTANCE) + level.obstacleSize, // Space them out initially
+          x: overlayWidth + (i * OBSTACLE_SPACING_DISTANCE) + obstacleWidth, // Space them out initially
           speed: level.baseObstacleSpeed,
-          size: level.obstacleSize,
+          height: OBSTACLE_HEIGHT, // Fixed height
+          width: obstacleWidth,    // Variable width
+          color: randomObstacleType.color,
+          type: randomObstacleType.type,
           passed: false
         });
       }
@@ -326,32 +341,26 @@
     }
 
     function checkCollision(playerX, playerY, playerSize, obstacle) {
-      const dx = playerX - obstacle.x;
-      const dy = playerY - (LANE_HEIGHT * obstacle.lane + LANE_HEIGHT / 2);
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      // Using approximate bounding box for collision for simplicity with rect obstacles
       // Player (circle): centerX, centerY, radius
-      // Obstacle (rect): x, y (top-left), width, height
       const playerRadius = playerSize / 2;
-      const obstacleHalfSize = obstacle.size / 2;
-      const obstacleCenterX = obstacle.x;
-      const obstacleCenterY = (LANE_HEIGHT * obstacle.lane + LANE_HEIGHT / 2);
+      const playerTop = playerY - playerRadius;
+      const playerBottom = playerY + playerRadius;
+      const playerLeft = playerX - playerRadius;
+      const playerRight = playerX + playerRadius;
 
-      // Closest point on obstacle to player center
-      let testX = playerX;
-      let testY = playerY;
+      // Obstacle (rectangle): x (center), y (center), width, height
+      const obstacleTop = (LANE_HEIGHT * obstacle.lane + LANE_HEIGHT / 2) - obstacle.height / 2;
+      const obstacleBottom = (LANE_HEIGHT * obstacle.lane + LANE_HEIGHT / 2) + obstacle.height / 2;
+      const obstacleLeft = obstacle.x - obstacle.width / 2;
+      const obstacleRight = obstacle.x + obstacle.width / 2;
 
-      if (playerX < obstacleCenterX - obstacleHalfSize) testX = obstacleCenterX - obstacleHalfSize;      // left edge
-      else if (playerX > obstacleCenterX + obstacleHalfSize) testX = obstacleCenterX + obstacleHalfSize;   // right edge
-      if (playerY < obstacleCenterY - obstacleHalfSize) testY = obstacleCenterY - obstacleHalfSize;      // top edge
-      else if (playerY > obstacleCenterY + obstacleHalfSize) testY = obstacleCenterY + obstacleHalfSize;   // bottom edge
+      // Check for overlap on X axis
+      const xOverlap = Math.max(0, Math.min(playerRight, obstacleRight) - Math.max(playerLeft, obstacleLeft));
+      // Check for overlap on Y axis
+      const yOverlap = Math.max(0, Math.min(playerBottom, obstacleBottom) - Math.max(playerTop, obstacleTop));
 
-      const distX = playerX - testX;
-      const distY = playerY - testY;
-      const distanceSquared = (distX * distX) + (distY * distY);
-
-      return distanceSquared <= (playerRadius * playerRadius);
+      // If both overlaps are greater than 0, there is a collision
+      return xOverlap > 0 && yOverlap > 0;
     }
 
 
@@ -385,11 +394,64 @@
 
       // Draw obstacles
       level.obstacles.forEach(obstacle => {
-        mainCtx.fillStyle = '#e84c3d'; // Obstacle color
-        mainCtx.beginPath();
-        const obstacleY = LANE_HEIGHT * obstacle.lane + LANE_HEIGHT / 2;
-        mainCtx.rect(obstacle.x - obstacle.size / 2, obstacleY - obstacle.size / 2, obstacle.size, obstacle.size);
-        mainCtx.fill();
+        const obstacleYCenter = LANE_HEIGHT * obstacle.lane + LANE_HEIGHT / 2;
+        const obstacleX = obstacle.x - obstacle.width / 2; // Top-left X for drawing
+        const obstacleY = obstacleYCenter - obstacle.height / 2; // Top-left Y for drawing
+
+        mainCtx.fillStyle = obstacle.color;
+        mainCtx.fillRect(obstacleX, obstacleY, obstacle.width, obstacle.height);
+
+        // Draw additional shapes based on obstacle type
+        if (obstacle.type === 'car') {
+            mainCtx.fillStyle = 'rgba(0,0,0,0.5)'; // Darker color for car details
+            // Windshield
+            mainCtx.fillRect(obstacleX + obstacle.width * 0.2, obstacleY + obstacle.height * 0.1, obstacle.width * 0.6, obstacle.height * 0.3);
+            // Rear window
+            mainCtx.fillRect(obstacleX + obstacle.width * 0.2, obstacleY + obstacle.height * 0.6, obstacle.width * 0.6, obstacle.height * 0.3);
+            // Wheels (simplified circles)
+            mainCtx.fillStyle = '#333';
+            mainCtx.beginPath();
+            mainCtx.arc(obstacleX + obstacle.width * 0.15, obstacleY + obstacle.height * 0.25, obstacle.height * 0.15, 0, Math.PI * 2);
+            mainCtx.arc(obstacleX + obstacle.width * 0.15, obstacleY + obstacle.height * 0.75, obstacle.height * 0.15, 0, Math.PI * 2);
+            mainCtx.arc(obstacleX + obstacle.width * 0.85, obstacleY + obstacle.height * 0.25, obstacle.height * 0.15, 0, Math.PI * 2);
+            mainCtx.arc(obstacleX + obstacle.width * 0.85, obstacleY + obstacle.height * 0.75, obstacle.height * 0.15, 0, Math.PI * 2);
+            mainCtx.fill();
+
+        } else if (obstacle.type === 'truck') {
+            mainCtx.fillStyle = 'rgba(0,0,0,0.5)'; // Darker color for truck details
+            // Cab
+            mainCtx.fillRect(obstacleX, obstacleY, obstacle.width * 0.3, obstacle.height);
+            // Trailer outline
+            mainCtx.strokeStyle = 'rgba(0,0,0,0.5)';
+            mainCtx.lineWidth = 2;
+            mainCtx.strokeRect(obstacleX + obstacle.width * 0.3, obstacleY, obstacle.width * 0.7, obstacle.height);
+            // Wheels
+            mainCtx.fillStyle = '#333';
+            mainCtx.beginPath();
+            mainCtx.arc(obstacleX + obstacle.width * 0.15, obstacleY + obstacle.height * 0.85, obstacle.height * 0.1, 0, Math.PI * 2); // Front wheel
+            mainCtx.arc(obstacleX + obstacle.width * 0.4, obstacleY + obstacle.height * 0.85, obstacle.height * 0.1, 0, Math.PI * 2); // Trailer wheel 1
+            mainCtx.arc(obstacleX + obstacle.width * 0.65, obstacleY + obstacle.height * 0.85, obstacle.height * 0.1, 0, Math.PI * 2); // Trailer wheel 2
+            mainCtx.arc(obstacleX + obstacle.width * 0.9, obstacleY + obstacle.height * 0.85, obstacle.height * 0.1, 0, Math.PI * 2); // Trailer wheel 3
+            mainCtx.fill();
+
+        } else if (obstacle.type === 'train') {
+            mainCtx.fillStyle = 'rgba(0,0,0,0.5)'; // Darker color for train details
+            // Windows
+            mainCtx.fillRect(obstacleX + obstacle.width * 0.1, obstacleY + obstacle.height * 0.2, obstacle.width * 0.15, obstacle.height * 0.6);
+            mainCtx.fillRect(obstacleX + obstacle.width * 0.3, obstacleY + obstacle.height * 0.2, obstacle.width * 0.15, obstacle.height * 0.6);
+            mainCtx.fillRect(obstacleX + obstacle.width * 0.5, obstacleY + obstacle.height * 0.2, obstacle.width * 0.15, obstacle.height * 0.6);
+            mainCtx.fillRect(obstacleX + obstacle.width * 0.7, obstacleY + obstacle.height * 0.2, obstacle.width * 0.15, obstacle.height * 0.6);
+            // Connectors (simplified)
+            mainCtx.fillStyle = '#666';
+            mainCtx.fillRect(obstacleX - 5, obstacleY + obstacle.height / 2 - 2, 10, 4); // Left connector
+            mainCtx.fillRect(obstacleX + obstacle.width - 5, obstacleY + obstacle.height / 2 - 2, 10, 4); // Right connector
+            // Wheels (simplified rectangles at the bottom)
+            mainCtx.fillStyle = '#333';
+            mainCtx.fillRect(obstacleX + obstacle.width * 0.05, obstacleY + obstacle.height * 0.8, obstacle.width * 0.2, obstacle.height * 0.15);
+            mainCtx.fillRect(obstacleX + obstacle.width * 0.3, obstacleY + obstacle.height * 0.8, obstacle.width * 0.2, obstacle.height * 0.15);
+            mainCtx.fillRect(obstacleX + obstacle.width * 0.55, obstacleY + obstacle.height * 0.8, obstacle.width * 0.2, obstacle.height * 0.15);
+            mainCtx.fillRect(obstacleX + obstacle.width * 0.8, obstacleY + obstacle.height * 0.8, obstacle.width * 0.15, obstacle.height * 0.15);
+        }
       });
 
       // Draw brushing value as text (will appear un-mirrored on screen)
@@ -490,6 +552,7 @@
                     targetY = LANE_HEIGHT * 1.5;
                     break;
             }
+            lastValidTargetY = targetY; // Update lastValidTargetY when a hand is detected
 
             if (lm.length > 0) {
               const currentX = lm[0].x * overlayWidth;
@@ -532,9 +595,10 @@
           });
         } else {
           ui.handsCount.textContent = "0";
-          logLines.push("No hand detected. Defaulting to middle lane.");
-          targetY = LANE_HEIGHT * 1.5;
-          currentLaneState = "front"; // Reset state if hand is not detected
+          logLines.push("No hand detected. Using last valid lane.");
+          // Use the last known valid lane position
+          targetY = lastValidTargetY; 
+          // currentLaneState = "front"; // Optional: reset state if hand is not detected
           handXPositions = [];
         }
 
@@ -558,16 +622,10 @@
             break;
           }
 
-          if (obstacle.x < objectX - PLAYER_SIZE / 2 && !obstacle.passed) {
+          if (obstacle.x + obstacle.width/2 < objectX - PLAYER_SIZE / 2 && !obstacle.passed) {
             score++;
             ui.score.textContent = score;
             obstacle.passed = true;
-          }
-
-          // Don't remove obstacles, just mark them as passed/off-screen
-          // We need to keep them in the array to count total obstacles for winning condition
-          if (obstacle.x > -obstacle.size) { // If it's still visible or about to be
-              allObstaclesPassed = false;
           }
         }
 
