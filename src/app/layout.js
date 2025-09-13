@@ -12,8 +12,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "TODO: Title",
-  description: "TODO: Description",
+  title: "Toothrush",
+  description: "A game about brushing your teeth",
 };
 
 export default function RootLayout({ children }) {
