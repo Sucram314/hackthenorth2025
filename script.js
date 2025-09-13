@@ -50,7 +50,6 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
     // Game state variables
     let score = 0;
     let gameOver = false;
-    let gameWon = false; // New game state variable
     let currentLaneState = "front"; // To keep track of the current hand posture state
 
     // Timer variables
@@ -106,7 +105,6 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
             if (timeLeft <= 0) {
                 clearInterval(timerInterval);
                 gameOver = true;
-                gameWon = false; // Player didn't win by passing obstacles, time ran out.
                 ui.log.textContent = "Time's up! Game Over.";
             }
         }, 1000);
@@ -194,7 +192,6 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
       ui.stopBtn.disabled = false;
       setLive(true);
       gameOver = false;
-      gameWon = false; // Reset game won state
       score = 0;
       ui.score.textContent = score;
       startTimer(); // Start the timer
@@ -476,11 +473,6 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
         let message = 'GAME OVER!';
         let subMessage = 'Time ran out. Click "Start camera" to play again.';
         let textColor = 'rgba(255, 0, 0, 0.7)';
-        if (gameWon) {
-            message = 'YOU WON!';
-            subMessage = 'Congratulations! You passed all obstacles. Click "Start camera" to play again.';
-            textColor = 'rgba(0, 255, 0, 0.7)';
-        }
         mainCtx.fillStyle = textColor;
         mainCtx.font = 'bold 48px Arial';
         mainCtx.textAlign = 'center';
@@ -506,11 +498,6 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
           let message = 'GAME OVER!';
           let subMessage = 'Time ran out. Click "Start camera" to play again.';
           let textColor = 'rgba(255, 0, 0, 0.7)';
-          if (gameWon) {
-              message = 'YOU WON!';
-              subMessage = 'Congratulations! You passed all obstacles. Click "Start camera" to play again.';
-              textColor = 'rgba(0, 255, 0, 0.7)';
-          }
 
           mainCtx.fillStyle = textColor;
           mainCtx.font = 'bold 48px Arial';
