@@ -1,7 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useGesture, LANE } from "../gesture/GestureContext";
-import useSound from "use-sound";
 
 // Vehicle image configuration - easily extensible
 const vehicleConfig = {
@@ -51,9 +50,8 @@ export default function GameCanvas({ playing, onRestart }) {
   const coin1 = useRef(null);
   const candyCorn = useRef(null);
 
-  const [audio] = useState(
-    typeof Audio !== "undefined" && new Audio("coinpickup.mp3")
-  ); //this will prevent rendering errors on NextJS since NodeJs doesn't recognise HTML tags neither its libs.
+  const [coinpickup] = useState( typeof Audio !== "undefined" && new Audio("coinpickup.mp3")); 
+  const [music] = useState( typeof Audio !== "undefined" && new Audio("JOYCORE SNIPPET.mp3")); 
 
   useEffect(() => {
     laneRef.current = lane;
@@ -155,7 +153,31 @@ export default function GameCanvas({ playing, onRestart }) {
     [obstacleSpec]
   );
 
-  const createCollectible = useCallback((initialX, S) => {
+  // build a new level whenever we (re)start
+  useEffect(() => {
+    music.currentTime = 0;
+    music.play();
+
+    const S = stateRef.current;
+    S.laneH = H / 3;
+    S.y = S.ty = S.laneH * 1.5;
+    S.obstacles = [];
+    S.collectibles = [];
+
+    // Obstacles
+    for (let i = 0; i < NUMBER_OF_OBS; i++) {
+      const initialX = W + i * OBSTACLE_SPACING;
+      S.obstacles.push(createObstacle(initialX, S));
+    }
+    // Collectibles
+    for (let i = 0; i < NUMBER_OF_COL; i++) {
+      const initialX = W + i * COLLECTIBLE_SPACING;
+      const c = createCollectible(initialX, S);
+      if (c) S.collectibles.push(c);
+    }
+  }, [playing, createObstacle]);
+
+  function createCollectible(initialX, S) {
     let tries = 0;
     while (tries++ < 100) {
       const lane = S.lanes[Math.floor(Math.random() * S.lanes.length)];
@@ -186,7 +208,7 @@ export default function GameCanvas({ playing, onRestart }) {
       }
     }
     return null;
-  }, []);
+  };
 
   // Game start/restart function with timer lifecycle
   const startGame = useCallback(() => {
@@ -411,8 +433,8 @@ export default function GameCanvas({ playing, onRestart }) {
           // Handle different collectible types
           if (c.type === "good") {
             setScore((s) => s + 1);
-            audio.currentTime = 0;
-            audio.play();
+            coinpickup.currentTime = 0;
+            coinpickup.play();
           } else if (c.type === "bad") {
             setScore((s) => Math.max(0, s - 1)); // Decrease score by 1, but don't go below 0
           }
@@ -422,6 +444,8 @@ export default function GameCanvas({ playing, onRestart }) {
           const newX = last ? last.x + COLLECTIBLE_SPACING : W;
           const nc = createCollectible(newX, S);
           if (nc) S.collectibles.push(nc);
+          coinpickup.currentTime = 0;
+          coinpickup.play();
         }
 
         // recycle off-screen
@@ -563,6 +587,7 @@ export default function GameCanvas({ playing, onRestart }) {
         ctx.font = "bold 48px 'Press Start 2P', monospace";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
+        music.pause();
         ctx.fillText("You did it! 😁", W / 2, H / 2 - 40);
         ctx.font = "bold 24px ui-sans-serif, system-ui, -apple-system";
         ctx.fillText(`Final Score: ${score}`, W / 2, H / 2 + 20);
@@ -594,7 +619,7 @@ export default function GameCanvas({ playing, onRestart }) {
     createObstacle,
     createCollectible,
     isUnhappy,
-    audio,
+    coinpickup,
   ]);
 
   return (
