@@ -639,7 +639,7 @@ export default function GameCanvas({ playing, onRestart }) {
         <div className="absolute inset-0 flex flex-col items-center justify-end rounded-2xl">
           <button
             onClick={handleRestart}
-            className="px-8 py-4 mb-8 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xl transition-colors duration-200 shadow-lg"
+            className="pixel-button"
           >
             Restart
           </button>
