@@ -71,7 +71,8 @@ const WebcamGestureMP = forwardRef((props, ref) => {
   const handX = useRef([]);
   const brushingValue = useRef(0);
   const BRUSHING_DECAY = 0.5;
-  const BRUSHING_IMPACT_FACTOR = 5;
+  const BRUSHING_IMPACT_FACTOR = 12;
+  const BRUSHING_VALUE_MAX = 3;
   const SMOOTHING_ALPHA = 0.1;
   const smoothedImpact = useRef(0);
 
@@ -261,6 +262,8 @@ const WebcamGestureMP = forwardRef((props, ref) => {
       setHandCount(0);
       // when no hand, keep last lane & let brush decay
     }
+
+    brushingValue.current = Math.min(brushingValue.current,BRUSHING_VALUE_MAX);
 
     // smoothing to publish
     smoothedImpact.current =
