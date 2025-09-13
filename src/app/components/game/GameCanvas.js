@@ -56,6 +56,9 @@ export default function GameCanvas({ playing, onRestart }) {
   const [music] = useState(
     typeof Audio !== "undefined" && new Audio("JOYCORE SNIPPET.mp3")
   );
+  const [candypickup] = useState(
+    typeof Audio !== "undefined" && new Audio("candypickup.mp3")
+  );
 
   useEffect(() => {
     laneRef.current = lane;
@@ -199,6 +202,7 @@ export default function GameCanvas({ playing, onRestart }) {
     music.volume = 0.3;
     music.loop = true;
     coinpickup.volume = 0.3;
+    candypickup.volume = 0.3;
 
     const S = stateRef.current;
     S.laneH = H / 3;
@@ -446,6 +450,8 @@ export default function GameCanvas({ playing, onRestart }) {
             coinpickup.play();
           } else if (c.type === "bad") {
             setScore((s) => Math.max(0, s - 1)); // Decrease score by 1, but don't go below 0
+            candypickup.currentTime = 0;
+            candypickup.play();
           }
 
           S.collectibles.splice(i, 1);
@@ -453,8 +459,6 @@ export default function GameCanvas({ playing, onRestart }) {
           const newX = last ? last.x + COLLECTIBLE_SPACING : W;
           const nc = createCollectible(newX, S);
           if (nc) S.collectibles.push(nc);
-          coinpickup.currentTime = 0;
-          coinpickup.play();
         }
 
         // recycle off-screen
