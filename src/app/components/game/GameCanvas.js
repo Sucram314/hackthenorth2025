@@ -194,6 +194,9 @@ export default function GameCanvas({ playing, onRestart }) {
   useEffect(() => {
     music.currentTime = 0;
     music.play();
+    music.volume = 0.3;
+    music.loop = true;
+    coinpickup.volume = 0.3;
 
     const S = stateRef.current;
     S.laneH = H / 3;
