@@ -433,8 +433,8 @@ export default function GameCanvas({ playing, onRestart }) {
           // Handle different collectible types
           if (c.type === "good") {
             setScore((s) => s + 1);
-            audio.currentTime = 0;
-            audio.play();
+            coinpickup.currentTime = 0;
+            coinpickup.play();
           } else if (c.type === "bad") {
             setScore((s) => Math.max(0, s - 1)); // Decrease score by 1, but don't go below 0
           }
@@ -619,7 +619,7 @@ export default function GameCanvas({ playing, onRestart }) {
     createObstacle,
     createCollectible,
     isUnhappy,
-    audio,
+    coinpickup,
   ]);
 
   return (
