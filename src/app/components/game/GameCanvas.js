@@ -48,6 +48,8 @@ export default function GameCanvas({ playing }) {
   const playerunhappy1 = useRef(null);
   const playerunhappy2 = useRef(null);
 
+  const coin1 = useRef(null);
+
   useEffect(() => {
     laneRef.current = lane;
   }, [lane]);
@@ -93,6 +95,12 @@ export default function GameCanvas({ playing }) {
       playerunhappy2.current = u2;
     };
     u2.src = "/unhappy2.png";
+
+    const c1 = new Image();
+    c1.onload = () => {
+      coin1.current = c1;
+    };
+    c1.src = "/coin1.png";
   }, []);
 
   const canvasRef = useRef(null);
@@ -451,10 +459,7 @@ export default function GameCanvas({ playing }) {
 
       // collectibles
       for (const c of S.collectibles) {
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, c.size / 2, 0, Math.PI * 2);
-        ctx.fillStyle = c.color;
-        ctx.fill();
+        ctx.drawImage(coin1.current,c.x-c.size/2,c.y-c.size/2,c.size,c.size);
       }
 
       // HUD
