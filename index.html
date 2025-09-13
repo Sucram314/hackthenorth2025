@@ -79,7 +79,7 @@
       <span class="pill" title="frames per second">FPS: <strong id="fps">0</strong></span>
       <span class="pill">Hands: <strong id="handsCount">0</strong></span>
       <span class="pill">Brushing: <strong id="brushingValue">0.00</strong></span>
-      <span class="pill">Score: <strong id="score">0</strong></span>
+      <span class="pill">Score: <strong id="score">0</strong>/<strong id="totalObstacles">0</strong></span>
     </div>
 
     <div class="row" style="margin-top:10px;">
@@ -117,6 +117,7 @@
       handsCount: document.getElementById('handsCount'),
       brushingValue: document.getElementById('brushingValue'),
       score: document.getElementById('score'),
+      totalObstacles: document.getElementById('totalObstacles'), // New UI element
       log: document.getElementById('log'),
       video: document.getElementById('video'),
       overlay: document.getElementById('overlay'),
@@ -144,22 +145,25 @@
     let handXPositions = [];
     let brushingValue = 0;
     const BRUSHING_DECAY = 0.9;
-    const BRUSHING_IMPACT_FACTOR = 8; // How much brushing affects obstacle speed
+    const BRUSHING_IMPACT_FACTOR = 3; // How much brushing affects obstacle speed
     let smoothedBrushingImpact = 0; // New variable for smoothed impact
     const SMOOTHING_ALPHA = 0.1; // Smoothing factor (0 to 1, lower = more smooth)
-
+    
+    // Depth-based scaling variables
+    const REFERENCE_DEPTH_Z = -0.1; // A typical Z-value for a hand at a "normal" distance (experiment with this)
+    const DEPTH_SCALING_FACTOR = 1; // How strongly distance affects the scale (adjust as needed)
 
     // Game state variables
     let score = 0;
     let gameOver = false;
+    let gameWon = false; // New game state variable
     let currentLaneState = "front"; // To keep track of the current hand posture state
 
     // Level definition and state
+    const NUMBER_OF_OBSTACLES = 10; // Fixed number of obstacles for the level
+    const OBSTACLE_SPACING_DISTANCE = 500; // Distance between obstacles (in pixels)
     let level = {
       obstacles: [],
-      nextObstacleTime: 0, // When the next obstacle should appear
-      minObstacleInterval: 1000, // Minimum time between obstacles (ms)
-      maxObstacleInterval: 4000, // Maximum time between obstacles (ms)
       baseObstacleSpeed: 2, // Base speed for obstacles
       obstacleSize: 100, // Default obstacle size
       lanes: [0, 1, 2] // Lane indices
@@ -195,6 +199,7 @@
       ui.stopBtn.disabled = false;
       setLive(true);
       gameOver = false;
+      gameWon = false; // Reset game won state
       score = 0;
       ui.score.textContent = score;
 
@@ -220,8 +225,19 @@
       smoothedBrushingImpact = 0; // Initialize smoothed value
       currentLaneState = "front"; // Reset state on camera start
 
+      // Initialize obstacles based on number and spacing
       level.obstacles = [];
-      level.nextObstacleTime = performance.now() + Math.random() * (level.maxObstacleInterval - level.minObstacleInterval) + level.minObstacleInterval;
+      ui.totalObstacles.textContent = NUMBER_OF_OBSTACLES;
+      for (let i = 0; i < NUMBER_OF_OBSTACLES; i++) {
+        const randomLane = level.lanes[Math.floor(Math.random() * level.lanes.length)];
+        level.obstacles.push({
+          lane: randomLane,
+          x: overlayWidth + (i * OBSTACLE_SPACING_DISTANCE) + level.obstacleSize, // Space them out initially
+          speed: level.baseObstacleSpeed,
+          size: level.obstacleSize,
+          passed: false
+        });
+      }
 
       lastTime = -1; frames = 0; lastFpsUpdate = performance.now();
       loop();
@@ -285,15 +301,15 @@
         // Apply bias based on current state
         if (currentLaneState === "up") {
             // To go from "up" to "front", pitch must be greater than BASE_UP_THRESHOLD + BIAS
-            upThreshold = BASE_UP_THRESHOLD + HYSTERESIS_BIAS/2;
+            upThreshold = BASE_UP_THRESHOLD + HYSTERESIS_BIAS;
         } else if (currentLaneState === "down") {
             // To go from "down" to "front", pitch must be less than BASE_DOWN_THRESHOLD - BIAS
-            downThreshold = BASE_DOWN_THRESHOLD - HYSTERESIS_BIAS/2;
+            downThreshold = BASE_DOWN_THRESHOLD - HYSTERESIS_BIAS;
         } else if (currentLaneState === "front") {
-            // To go from "front" to "up", pitch must be less than BASE_UP_THRESHOLD
-            // To go from "front" to "down", pitch must be greater than BASE_DOWN_THRESHOLD
-            upThreshold = BASE_UP_THRESHOLD - HYSTERESIS_BIAS/2;
-            downThreshold = BASE_DOWN_THRESHOLD + HYSTERESIS_BIAS/2;
+            // To go from "front" to "up", pitch must be less than BASE_UP_THRESHOLD - BIAS
+            // To go from "front" to "down", pitch must be greater than BASE_DOWN_THRESHOLD + BIAS
+            upThreshold = BASE_UP_THRESHOLD - HYSTERESIS_BIAS;
+            downThreshold = BASE_DOWN_THRESHOLD + HYSTERESIS_BIAS;
         }
 
         let newState;
@@ -384,15 +400,23 @@
       mainCtx.fillText(`Brushing: ${brushingValue.toFixed(2)} (Smoothed: ${smoothedBrushingImpact.toFixed(2)})`, overlayWidth - 10, 10);
 
 
-      // Game Over Text
+      // Game Over Text or Game Won Text
       if (gameOver) {
-        mainCtx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+        let message = 'GAME OVER!';
+        let subMessage = 'You hit an obstacle. Click "Start camera" to play again.';
+        let textColor = 'rgba(255, 0, 0, 0.7)';
+        if (gameWon) {
+            message = 'YOU WON!';
+            subMessage = 'Congratulations! Click "Start camera" to play again.';
+            textColor = 'rgba(0, 255, 0, 0.7)';
+        }
+        mainCtx.fillStyle = textColor;
         mainCtx.font = 'bold 48px Arial';
         mainCtx.textAlign = 'center';
         mainCtx.textBaseline = 'middle';
-        mainCtx.fillText('GAME OVER!', overlayWidth / 2, overlayHeight / 2);
+        mainCtx.fillText(message, overlayWidth / 2, overlayHeight / 2);
         mainCtx.font = 'bold 24px Arial';
-        mainCtx.fillText('Click "Start camera" to play again', overlayWidth / 2, overlayHeight / 2 + 40);
+        mainCtx.fillText(subMessage, overlayWidth / 2, overlayHeight / 2 + 40);
       }
 
       mainCtx.restore();
@@ -402,18 +426,28 @@
     function loop(){
       rafId = requestAnimationFrame(loop);
       if (!detector || !ui.video.videoWidth) {
-        if (gameOver && ui.video.srcObject) { // Clear canvas once on game over
+        if (gameOver && ui.video.srcObject) { // Clear canvas once on game over or game won
           mainCtx.clearRect(0,0,overlayWidth, overlayHeight);
           mainCtx.save();
           mainCtx.scale(-1, 1);
           mainCtx.translate(-overlayWidth, 0);
-          mainCtx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+
+          let message = 'GAME OVER!';
+          let subMessage = 'You hit an obstacle. Click "Start camera" to play again.';
+          let textColor = 'rgba(255, 0, 0, 0.7)';
+          if (gameWon) {
+              message = 'YOU WON!';
+              subMessage = 'Congratulations! Click "Start camera" to play again.';
+              textColor = 'rgba(0, 255, 0, 0.7)';
+          }
+
+          mainCtx.fillStyle = textColor;
           mainCtx.font = 'bold 48px Arial';
           mainCtx.textAlign = 'center';
           mainCtx.textBaseline = 'middle';
-          mainCtx.fillText('GAME OVER!', overlayWidth / 2, overlayHeight / 2);
+          mainCtx.fillText(message, overlayWidth / 2, overlayHeight / 2);
           mainCtx.font = 'bold 24px Arial';
-          mainCtx.fillText('Click "Start camera" to play again', overlayWidth / 2, overlayHeight / 2 + 40);
+          mainCtx.fillText(subMessage, overlayWidth / 2, overlayHeight / 2 + 40);
           mainCtx.restore();
         }
         return; // Don't proceed if game is over or camera/detector not ready
@@ -430,6 +464,8 @@
         const result = detector.detectForVideo(ui.video, now);
         let logLines = [];
         brushingValue *= BRUSHING_DECAY; // Apply decay to current brushing value
+
+        let depthScale = 1.0; // Initialize depth scale
 
         if (result?.landmarks?.length) {
           ui.handsCount.textContent = String(result.landmarks.length);
@@ -457,6 +493,16 @@
 
             if (lm.length > 0) {
               const currentX = lm[0].x * overlayWidth;
+              const currentZ = lm[0].z; // Get the Z-coordinate of the wrist landmark
+
+              // Calculate depth scaling factor
+              // If currentZ is more negative (further away), depthScale will be > 1
+              // If currentZ is less negative (closer), depthScale will be < 1
+              // The `DEPTH_SCALING_FACTOR` determines how sensitive this scaling is.
+              depthScale = Math.pow(REFERENCE_DEPTH_Z / currentZ, DEPTH_SCALING_FACTOR);
+              // Ensure depthScale doesn't become too extreme or negative
+              depthScale = Math.max(0.5, Math.min(depthScale, 3.0)); // Clamp between reasonable values
+
               handXPositions.push(currentX);
               if (handXPositions.length > HISTORY_SIZE) {
                 handXPositions.shift();
@@ -476,7 +522,8 @@
                   totalMovement += Math.abs(handXPositions[j] - handXPositions[j-1]);
                 }
 
-                const currentBrushing = (range * 0.01) + (totalMovement * 0.005);
+                // Apply depth scaling to the brushing calculation
+                const currentBrushing = ((range * 0.01) + (totalMovement * 0.005)) * depthScale;
                 if (currentBrushing > brushingValue) {
                     brushingValue = currentBrushing;
                 }
@@ -497,20 +544,8 @@
         ui.brushingValue.textContent = brushingValue.toFixed(2);
 
         // Game logic updates
-        // Generate new obstacles
-        if (now >= level.nextObstacleTime) {
-          const randomLane = level.lanes[Math.floor(Math.random() * level.lanes.length)];
-          level.obstacles.push({
-            lane: randomLane,
-            x: overlayWidth + level.obstacleSize, // Start off-screen to the right
-            speed: level.baseObstacleSpeed,
-            size: level.obstacleSize,
-            passed: false
-          });
-          level.nextObstacleTime = now + Math.random() * (level.maxObstacleInterval - level.minObstacleInterval) + level.minObstacleInterval;
-        }
-
         // Move obstacles and check for collisions
+        let allObstaclesPassed = true;
         for (let i = level.obstacles.length - 1; i >= 0; i--) {
           const obstacle = level.obstacles[i];
           // Use the smoothedBrushingImpact for obstacle movement
@@ -529,9 +564,17 @@
             obstacle.passed = true;
           }
 
-          if (obstacle.x < -obstacle.size) {
-            level.obstacles.splice(i, 1);
+          // Don't remove obstacles, just mark them as passed/off-screen
+          // We need to keep them in the array to count total obstacles for winning condition
+          if (obstacle.x > -obstacle.size) { // If it's still visible or about to be
+              allObstaclesPassed = false;
           }
+        }
+
+        if (!gameOver && allObstaclesPassed && score === NUMBER_OF_OBSTACLES) {
+            gameWon = true;
+            gameOver = true; // Set game over to true so the win message displays
+            ui.log.textContent = "Congratulations! You passed all obstacles!";
         }
 
 
