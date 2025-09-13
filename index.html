@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Hand Posture Detection — HTML POC (MediaPipe Tasks)</title>
+  <title>Lane Control — MediaPipe Hand Posture</title>
   <style>
     :root { --bg:#0b1020; --fg:#e8eef7; --accent:#5ad; --muted:#a8b3c7; }
     * { box-sizing: border-box; }
@@ -40,8 +40,15 @@
     .stage {
       position: relative; width: 100%; aspect-ratio: 16 / 9;
       background: #060a18; border:1px solid #1b294f; border-radius:14px; overflow:hidden;
+      display: flex; justify-content: center; align-items: center;
+    }
+    #gameCanvas {
+      background: #101933;
+      border: 1px solid #2a3c69;
+      border-radius: 8px;
     }
     video, canvas { position: absolute; inset: 0; width:100%; height:100%; }
+    video { transform: scaleX(-1); }
     canvas { pointer-events:none; }
     .watermark {
       position:absolute; top:8px; right:10px; font-size:12px; color:#cfe3ff; opacity:.8;
@@ -58,7 +65,7 @@
 </head>
 <body>
   <div class="card">
-    <h1>✋ Hand Posture Detection <span class="badge">— MediaPipe Tasks (Web)</span></h1>
+    <h1>✋ Lane Control <span class="badge">— MediaPipe Hand Posture</span></h1>
     <div class="toolbar">
       <button id="startBtn" class="primary">Start camera</button>
       <button id="stopBtn" disabled>Stop camera</button>
@@ -69,12 +76,15 @@
 
     <div class="row" style="margin-top:10px;">
       <div class="stage">
-        <video id="video" playsinline muted></video>
-        <canvas id="overlay"></canvas>
-        <div class="watermark">Hand landmarks + connections</div>
+        <video id="video" playsinline muted style="display:none;"></video>
+        <canvas id="overlay" style="display:none;"></canvas>
+        <canvas id="gameCanvas" width="640" height="360"></canvas>
+        <div class="watermark">Hand landmarks + connections (hidden)</div>
       </div>
       <div class="log" id="log">Click “Start camera”, allow permission, then hold your hand up 🖐️.
-We draw 21 landmarks + connections and show basic info (handedness, confidences).
+        Tilt your hand up for the top lane.
+        Tilt your hand down for the bottom lane.
+        Hold it flat for the middle lane.
       </div>
     </div>
 
@@ -83,7 +93,6 @@ We draw 21 landmarks + connections and show basic info (handedness, confidences)
     </footer>
   </div>
 
-  <!-- MediaPipe Tasks: import as an ESM module directly from a CDN (no build tools required). -->
   <script type="module">
     import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.0";
 
@@ -97,6 +106,7 @@ We draw 21 landmarks + connections and show basic info (handedness, confidences)
       log: document.getElementById('log'),
       video: document.getElementById('video'),
       overlay: document.getElementById('overlay'),
+      gameCanvas: document.getElementById('gameCanvas'),
     };
 
     let stream;
@@ -104,8 +114,17 @@ We draw 21 landmarks + connections and show basic info (handedness, confidences)
     let rafId = 0;
     let lastTime = 0, frames = 0, lastFpsUpdate = 0;
 
-    const ctx = ui.overlay.getContext('2d');
-    const drawer = new DrawingUtils(ctx);
+    const overlayCtx = ui.overlay.getContext('2d');
+    const gameCtx = ui.gameCanvas.getContext('2d');
+    const drawer = new DrawingUtils(overlayCtx);
+
+    // Game state variables
+    const LANE_HEIGHT = ui.gameCanvas.height / 3;
+    const OBJECT_SIZE = 40;
+    let objectY = LANE_HEIGHT / 2; // Start in middle lane (will be updated by gesture)
+    let targetY = objectY;
+    let objectX = ui.gameCanvas.width / 4;
+    const OBJECT_SPEED = 5;
 
     function setStatus(text){ ui.status.textContent = text; }
     function setLive(on){
@@ -120,12 +139,11 @@ We draw 21 landmarks + connections and show basic info (handedness, confidences)
       );
       detector = await HandLandmarker.createFromOptions(fileset, {
         baseOptions: {
-          // Official hosted model bundle (float16, v1)
           modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
           delegate: "GPU"
         },
         runningMode: "VIDEO",
-        numHands: 2,
+        numHands: 1,
         minHandDetectionConfidence: 0.5,
         minHandPresenceConfidence: 0.5,
         minTrackingConfidence: 0.5
@@ -138,7 +156,6 @@ We draw 21 landmarks + connections and show basic info (handedness, confidences)
       ui.stopBtn.disabled = false;
       setLive(true);
 
-      // Prefer user-facing camera, request a reasonable HD size.
       stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user", width: { ideal: 960 }, height: { ideal: 540 } },
         audio: false
@@ -146,7 +163,6 @@ We draw 21 landmarks + connections and show basic info (handedness, confidences)
       ui.video.srcObject = stream;
       await ui.video.play();
 
-      // Match canvas to the actual video size.
       ui.overlay.width = ui.video.videoWidth;
       ui.overlay.height = ui.video.videoHeight;
 
@@ -160,13 +176,98 @@ We draw 21 landmarks + connections and show basic info (handedness, confidences)
         stream.getTracks().forEach(t => t.stop());
         stream = null;
       }
-      ctx.clearRect(0,0,ui.overlay.width, ui.overlay.height);
+      overlayCtx.clearRect(0,0,ui.overlay.width, ui.overlay.height);
       ui.video.srcObject = null;
       ui.startBtn.disabled = false;
       ui.stopBtn.disabled = true;
       setLive(false);
       ui.handsCount.textContent = "0";
       ui.fps.textContent = "0";
+
+      gameCtx.clearRect(0, 0, ui.gameCanvas.width, ui.gameCanvas.height);
+    }
+
+    // Function to estimate yaw, pitch, and roll based on hand posture
+    // This is from the previous version, adapted for lane control.
+    function estimateHandRotation(landmarks) {
+      // Using wrist (0), middle finger MCP (9), and pinky MCP (17) for a basic plane
+      const wrist = landmarks[0];
+      const middleMcp = landmarks[9];
+      const pinkyMcp = landmarks[17];
+
+      // Vector along the presumed object's axis (from wrist towards middle finger base if hand is closed)
+      const vecObjAxisX = middleMcp.x - wrist.x;
+      const vecObjAxisY = middleMcp.y - wrist.y;
+      const vecObjAxisZ = middleMcp.z - wrist.z;
+
+      // Normalizing the vector
+      const mag = Math.sqrt(vecObjAxisX*vecObjAxisX + vecObjAxisY*vecObjAxisY + vecObjAxisZ*vecObjAxisZ);
+      const normalX = vecObjAxisX / mag;
+      const normalY = vecObjAxisY / mag;
+      const normalZ = vecObjAxisZ / mag;
+
+      // Yaw (rotation around Y-axis) - looking left/right
+      const yaw = Math.atan2(normalX, -normalZ) * (180 / Math.PI); // -Z for forward
+
+      // Pitch (rotation around X-axis) - pointing up/down
+      const pitch = Math.atan2(normalY, Math.sqrt(normalX * normalX + normalZ * normalZ)) * (180 / Math.PI);
+
+      // Roll (rotation around Z-axis) - twisting
+      const vecSideX = pinkyMcp.x - wrist.x; // Using pinky-wrist for a side vector
+      const vecSideY = pinkyMcp.y - wrist.y;
+      const roll = Math.atan2(vecSideY, vecSideX) * (180 / Math.PI);
+
+      return {
+        yaw: parseFloat(yaw.toFixed(2)),
+        pitch: parseFloat(pitch.toFixed(2)),
+        roll: parseFloat(roll.toFixed(2)),
+      };
+    }
+
+    // Function to map pitch to lane
+    function getLaneFromPitch(pitch) {
+        // These thresholds will likely need tuning based on how you hold your hand.
+        // Positive pitch typically means pointing downwards.
+        // Negative pitch typically means pointing upwards.
+        const UP_PITCH_THRESHOLD = 40; // e.g., if hand points up by > 20 degrees
+        const DOWN_PITCH_THRESHOLD = -40; // e.g., if hand points down by > 20 degrees
+
+        if (pitch > UP_PITCH_THRESHOLD) {
+            return "up";
+        } else if (pitch < DOWN_PITCH_THRESHOLD) {
+            return "down";
+        } else {
+            return "front"; // Neutral/flat hand
+        }
+    }
+
+
+    // Function to draw the game state
+    function drawGame() {
+      gameCtx.clearRect(0, 0, ui.gameCanvas.width, ui.gameCanvas.height);
+
+      // Draw lanes
+      gameCtx.strokeStyle = 'rgba(150, 150, 150, 0.4)';
+      gameCtx.lineWidth = 2;
+      gameCtx.beginPath();
+      gameCtx.moveTo(0, LANE_HEIGHT);
+      gameCtx.lineTo(ui.gameCanvas.width, LANE_HEIGHT);
+      gameCtx.moveTo(0, LANE_HEIGHT * 2);
+      gameCtx.lineTo(ui.gameCanvas.width, LANE_HEIGHT * 2);
+      gameCtx.stroke();
+
+      // Move object smoothly
+      if (Math.abs(targetY - objectY) > 1) {
+          objectY += (targetY - objectY) * 0.1; // Easing function
+      } else {
+          objectY = targetY;
+      }
+
+      // Draw the object
+      gameCtx.fillStyle = '#5ad';
+      gameCtx.beginPath();
+      gameCtx.arc(objectX, objectY, OBJECT_SIZE / 2, 0, Math.PI * 2);
+      gameCtx.fill();
     }
 
     function loop(){
@@ -179,53 +280,51 @@ We draw 21 landmarks + connections and show basic info (handedness, confidences)
 
         const result = detector.detectForVideo(ui.video, now);
 
-        // Clear & draw
-        ctx.clearRect(0,0,ui.overlay.width, ui.overlay.height);
-        let lines = [];
+        overlayCtx.clearRect(0,0,ui.overlay.width, ui.overlay.height);
+        let logLines = [];
+
         if (result?.landmarks?.length) {
           ui.handsCount.textContent = String(result.landmarks.length);
           result.landmarks.forEach((lm, i) => {
-            // Solid connections & points
             drawer.drawConnectors(lm, HandLandmarker.HAND_CONNECTIONS, { lineWidth: 3 });
             drawer.drawLandmarks(lm, { lineWidth: 1, radius: 3 });
 
-            // Label near the wrist (lm[0]) with handedness & score
-            const handed = result.handednesses?.[i]?.[0];
-            if (handed) {
-              const x = lm[0].x * ui.overlay.width + 8;
-              const y = lm[0].y * ui.overlay.height - 8;
-              ctx.font = "600 14px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-              ctx.fillStyle = "rgba(6,10,24,.7)";
-              ctx.fillRect(x-6, y-18, 140, 22);
-              ctx.strokeStyle = "rgba(90,173,221,.65)";
-              ctx.strokeRect(x-6, y-18, 140, 22);
-              ctx.fillStyle = "#cfe3ff";
-              ctx.fillText(`${handed.categoryName} ${(handed.score*100).toFixed(0)}%`, x, y);
+            // Use the rotation estimation from the previous version
+            const rotation = estimateHandRotation(lm);
+            const currentLaneCommand = getLaneFromPitch(rotation.pitch);
+
+            logLines.push(`Hand ${i+1}: Yaw: ${rotation.yaw}° Pitch: ${rotation.pitch}° Roll: ${rotation.roll}° -> Lane: ${currentLaneCommand}`);
+
+            // Logic to move the object to the chosen lane based on pitch
+            switch (currentLaneCommand) {
+                case "up":
+                    targetY = LANE_HEIGHT / 2; // Top lane center
+                    break;
+                case "down":
+                    targetY = LANE_HEIGHT * 2.5; // Bottom lane center
+                    break;
+                case "front":
+                default:
+                    targetY = LANE_HEIGHT * 1.5; // Middle lane center
+                    break;
             }
-
-            // replace with some model which accurately detects hand orientation
-
-            const THRESHOLD = 100;
-            var dif = (lm[4].y - lm[0].y) *  ui.overlay.height;
-            if(dif < -THRESHOLD) lines.push("down");
-            else if(dif > THRESHOLD) lines.push("up");
-            else lines.push("front");
-
           });
         } else {
           ui.handsCount.textContent = "0";
+          logLines.push("No hand detected. Defaulting to middle lane.");
+          targetY = LANE_HEIGHT * 1.5; // Default to middle lane if no hand
         }
 
-        // Simple FPS calc
+        drawGame();
+
         frames++;
         if (now - lastFpsUpdate > 1000) {
           ui.fps.textContent = String(frames);
           frames = 0; lastFpsUpdate = now;
         }
 
-        // Update log occasionally
-        if (lines.length) {
-          ui.log.textContent = lines.join("\n"); // Use "\n" for line breaks
+        if (logLines.length) {
+          ui.log.textContent = logLines.join("\n");
         }
       }
     }
@@ -241,7 +340,6 @@ We draw 21 landmarks + connections and show basic info (handedness, confidences)
     });
     ui.stopBtn.addEventListener('click', stopCamera);
 
-    // Graceful abort on page hide
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) stopCamera();
     });
