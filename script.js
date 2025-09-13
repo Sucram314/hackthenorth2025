@@ -61,6 +61,7 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
     // Level definition and state
     const NUMBER_OF_OBSTACLES = 10; // Fixed number of obstacles for the level
     const OBSTACLE_SPACING_DISTANCE = 500; // Distance between obstacles (in pixels)
+    const COLLECTIBLE_SPACING_DISTANCE = 250; // Distance between collectibles (in pixels)
     const OBSTACLE_HEIGHT = 60; // Fixed height for obstacles
     const COLLECTIBLE_SIZE = 20; // Size of collectibles
     const NUMBER_OF_COLLECTIBLES = 20; // Number of collectibles per level
@@ -117,6 +118,76 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
         ui.timer.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     }
 
+    // New helper functions for creating obstacles and collectibles
+    const obstacleTypes = [
+        { type: 'car', multiplier: 2, color: '#e84c3d' }, // Red car
+        { type: 'truck', multiplier: 3, color: '#f1c40f' }, // Yellow truck
+        { type: 'train', multiplier: 4, color: '#3498db' }  // Blue train
+    ];
+
+    function createNewObstacle(initialXPosition) {
+        const randomLane = level.lanes[Math.floor(Math.random() * level.lanes.length)];
+        const randomObstacleType = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+        const obstacleWidth = OBSTACLE_HEIGHT * randomObstacleType.multiplier;
+
+        return {
+            lane: randomLane,
+            x: initialXPosition + obstacleWidth, // Position relative to initialXPosition
+            speed: level.baseObstacleSpeed,
+            height: OBSTACLE_HEIGHT,
+            width: obstacleWidth,
+            color: randomObstacleType.color,
+            type: randomObstacleType.type,
+            passed: false
+        };
+    }
+
+    function createNewCollectible(initialXPosition) {
+        let collectibleX, collectibleY, collectibleLane;
+        let collidedWithObstacle = true;
+        let attempts = 0;
+
+        // Try to place collectible without colliding with an existing obstacle
+        while (collidedWithObstacle && attempts < 100) {
+            collectibleLane = level.lanes[Math.floor(Math.random() * level.lanes.length)];
+            collectibleX = initialXPosition + Math.random() * overlayWidth / 2; // Random X position within a range
+            collectibleY = LANE_HEIGHT * collectibleLane + LANE_HEIGHT / 2;
+
+            collidedWithObstacle = false;
+            for (const obstacle of level.obstacles) {
+                const obstacleTop = (LANE_HEIGHT * obstacle.lane + LANE_HEIGHT / 2) - obstacle.height / 2;
+                const obstacleBottom = (LANE_HEIGHT * obstacle.lane + LANE_HEIGHT / 2) + obstacle.height / 2;
+                const obstacleLeft = obstacle.x - obstacle.width / 2;
+                const obstacleRight = obstacle.x + obstacle.width / 2;
+
+                const collectibleTop = collectibleY - COLLECTIBLE_SIZE / 2;
+                const collectibleBottom = collectibleY + COLLECTIBLE_SIZE / 2;
+                const collectibleLeft = collectibleX - COLLECTIBLE_SIZE / 2;
+                const collectibleRight = collectibleX + COLLECTIBLE_SIZE / 2;
+
+                const xOverlap = Math.max(0, Math.min(collectibleRight, obstacleRight) - Math.max(collectibleLeft, obstacleLeft));
+                const yOverlap = Math.max(0, Math.min(collectibleBottom, obstacleBottom) - Math.max(collectibleTop, obstacleTop));
+
+                if (xOverlap > 0 && yOverlap > 0) {
+                    collidedWithObstacle = true;
+                    break;
+                }
+            }
+            attempts++;
+        }
+
+        if (!collidedWithObstacle) {
+            return {
+                lane: collectibleLane,
+                x: collectibleX,
+                y: collectibleY,
+                size: COLLECTIBLE_SIZE,
+                color: '#FFD700'
+            };
+        }
+        return null; // Return null if placement failed
+    }
+
     async function startCamera(){
       if (!detector) await initDetector();
       ui.startBtn.disabled = true;
@@ -154,73 +225,20 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
       // Initialize obstacles based on number and spacing
       level.obstacles = [];
       ui.totalObstacles.textContent = NUMBER_OF_OBSTACLES;
-      const obstacleTypes = [
-          { type: 'car', multiplier: 2, color: '#e84c3d' }, // Red car
-          { type: 'truck', multiplier: 3, color: '#f1c40f' }, // Yellow truck
-          { type: 'train', multiplier: 4, color: '#3498db' }  // Blue train
-      ];
+      
 
       for (let i = 0; i < NUMBER_OF_OBSTACLES; i++) {
-        const randomLane = level.lanes[Math.floor(Math.random() * level.lanes.length)];
-        const randomObstacleType = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
-        const obstacleWidth = OBSTACLE_HEIGHT * randomObstacleType.multiplier;
-
-        level.obstacles.push({
-          lane: randomLane,
-          x: overlayWidth + (i * OBSTACLE_SPACING_DISTANCE) + obstacleWidth, // Space them out initially
-          speed: level.baseObstacleSpeed,
-          height: OBSTACLE_HEIGHT, // Fixed height
-          width: obstacleWidth,    // Variable width
-          color: randomObstacleType.color,
-          type: randomObstacleType.type,
-          passed: false
-        });
+        const initialX = overlayWidth + (i * OBSTACLE_SPACING_DISTANCE);
+        level.obstacles.push(createNewObstacle(initialX));
       }
 
       // Initialize collectibles
       level.collectibles = [];
       for (let i = 0; i < NUMBER_OF_COLLECTIBLES; i++) {
-          let collectibleX, collectibleY, collectibleLane;
-          let collidedWithObstacle = true;
-          let attempts = 0;
-
-          // Try to place collectible without colliding with an existing obstacle
-          while (collidedWithObstacle && attempts < 100) { // Limit attempts to prevent infinite loop
-              collectibleLane = level.lanes[Math.floor(Math.random() * level.lanes.length)];
-              collectibleX = overlayWidth + (i * OBSTACLE_SPACING_DISTANCE / 2) + Math.random() * overlayWidth; // Random X position within a wider range
-              collectibleY = LANE_HEIGHT * collectibleLane + LANE_HEIGHT / 2;
-
-              collidedWithObstacle = false;
-              for (const obstacle of level.obstacles) {
-                  const obstacleTop = (LANE_HEIGHT * obstacle.lane + LANE_HEIGHT / 2) - obstacle.height / 2;
-                  const obstacleBottom = (LANE_HEIGHT * obstacle.lane + LANE_HEIGHT / 2) + obstacle.height / 2;
-                  const obstacleLeft = obstacle.x - obstacle.width / 2;
-                  const obstacleRight = obstacle.x + obstacle.width / 2;
-
-                  const collectibleTop = collectibleY - COLLECTIBLE_SIZE / 2;
-                  const collectibleBottom = collectibleY + COLLECTIBLE_SIZE / 2;
-                  const collectibleLeft = collectibleX - COLLECTIBLE_SIZE / 2;
-                  const collectibleRight = collectibleX + COLLECTIBLE_SIZE / 2;
-
-                  const xOverlap = Math.max(0, Math.min(collectibleRight, obstacleRight) - Math.max(collectibleLeft, obstacleLeft));
-                  const yOverlap = Math.max(0, Math.min(collectibleBottom, obstacleBottom) - Math.max(collectibleTop, obstacleTop));
-
-                  if (xOverlap > 0 && yOverlap > 0) {
-                      collidedWithObstacle = true;
-                      break;
-                  }
-              }
-              attempts++;
-          }
-
-          if (!collidedWithObstacle) { // Only add if it didn't collide after attempts
-              level.collectibles.push({
-                  lane: collectibleLane,
-                  x: collectibleX,
-                  y: collectibleY, // Store center Y for collectibles
-                  size: COLLECTIBLE_SIZE,
-                  color: '#FFD700' // Gold color for collectibles
-              });
+          const initialX = overlayWidth + (i * COLLECTIBLE_SPACING_DISTANCE);
+          const newCollectible = createNewCollectible(initialX);
+          if (newCollectible) {
+              level.collectibles.push(newCollectible);
           }
       }
 
@@ -602,7 +620,7 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
         // Move obstacles and check for collisions
         let collidedObstacleIndex = -1;
 
-        for (let i = 0; i < level.obstacles.length; i++) {
+        for (let i = level.obstacles.length - 1; i >= 0; i--) { // Iterate backwards for safe removal
           const obstacle = level.obstacles[i];
 
           // Use the smoothedBrushingImpact for obstacle movement
@@ -611,6 +629,15 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
 
           if (checkCollision(objectX, objectY, PLAYER_SIZE, obstacle)) {
             collidedObstacleIndex = i;
+          }
+
+          // Check if obstacle is off screen to the left and create a new one
+          if (obstacle.x + obstacle.width / 2 < 0) {
+              level.obstacles.splice(i, 1); // Remove the off-screen obstacle
+              // Add a new obstacle at the right edge, staggered
+              const lastObstacle = level.obstacles[level.obstacles.length - 1];
+              const newXPosition = lastObstacle ? lastObstacle.x + OBSTACLE_SPACING_DISTANCE : overlayWidth;
+              level.obstacles.push(createNewObstacle(newXPosition));
           }
         }
 
@@ -636,7 +663,7 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
         }
 
         // Move collectibles and check for collisions
-        for (let i = level.collectibles.length - 1; i >= 0; i--) {
+        for (let i = level.collectibles.length - 1; i >= 0; i--) { // Iterate backwards for safe removal
             const collectible = level.collectibles[i];
             const collectibleMovement = level.baseObstacleSpeed + (smoothedBrushingImpact * BRUSHING_IMPACT_FACTOR);
             collectible.x -= collectibleMovement;
@@ -645,6 +672,25 @@ import { HandLandmarker, FilesetResolver, DrawingUtils } from "https://cdn.jsdel
                 score++;
                 ui.score.textContent = score;
                 level.collectibles.splice(i, 1); // Remove collected item
+                // Add a new collectible at the right edge, staggered
+                const lastCollectible = level.collectibles[level.collectibles.length - 1];
+                const newXPosition = lastCollectible ? lastCollectible.x + COLLECTIBLE_SPACING_DISTANCE : overlayWidth;
+                const newCollectible = createNewCollectible(newXPosition);
+                if (newCollectible) {
+                    level.collectibles.push(newCollectible);
+                }
+            }
+
+            // Check if collectible is off screen to the left and create a new one
+            if (collectible.x + collectible.size / 2 < 0) {
+                level.collectibles.splice(i, 1); // Remove the off-screen collectible
+                // Add a new collectible at the right edge, staggered
+                const lastCollectible = level.collectibles[level.collectibles.length - 1];
+                const newXPosition = lastCollectible ? lastCollectible.x + COLLECTIBLE_SPACING_DISTANCE : overlayWidth;
+                const newCollectible = createNewCollectible(newXPosition);
+                if (newCollectible) {
+                    level.collectibles.push(newCollectible);
+                }
             }
         }
 
