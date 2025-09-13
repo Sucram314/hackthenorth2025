@@ -2,7 +2,7 @@ name: Deploy Next.js to Cloudflare Workers
 
 on:
   push:
-    branches: [ cloudflare ]   # deploy on new commits to branch 'cloudflare'
+    branches: [ main ]   # deploy on new commits to branch 'cloudflare'
   workflow_dispatch:            # allow manual runs too
 
 jobs:
