@@ -192,8 +192,10 @@ export default function GameCanvas({ playing, onRestart }) {
 
   // build a new level whenever we (re)start
   useEffect(() => {
-    music.currentTime = 0;
-    music.play();
+    if (playing) {
+      music.currentTime = 0;
+      music.play();
+    }
     music.volume = 0.3;
     music.loop = true;
     coinpickup.volume = 0.3;
@@ -215,7 +217,7 @@ export default function GameCanvas({ playing, onRestart }) {
       const c = createCollectible(initialX, S);
       if (c) S.collectibles.push(c);
     }
-  }, [playing, createObstacle, createCollectible, music]);
+  }, [playing, createObstacle, createCollectible, music, coinpickup]);
 
   // Game start/restart function with timer lifecycle
   const startGame = useCallback(() => {
