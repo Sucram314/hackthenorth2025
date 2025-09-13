@@ -241,7 +241,7 @@
     function getLaneFromPitch(pitch) {
         // Swapped UP and DOWN conditions
         const UP_PITCH_THRESHOLD = -60;
-        const DOWN_PITCH_THRESHOLD = 20;
+        const DOWN_PITCH_THRESHOLD = 30;
 
         if (pitch < UP_PITCH_THRESHOLD) {
             return "down"; // Was "up", now "down"
