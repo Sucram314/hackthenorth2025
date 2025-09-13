@@ -283,7 +283,7 @@ const WebcamGestureMP = forwardRef((props, ref) => {
   }
 
   return (
-    <div className="ring-1 ring-border bg-card p-6">
+    <div className="webcam-panel bg-card p-6">
       <h2 className="text-xl font-semibold text-card-foreground">Webcam</h2>
       {err && <p className="mt-2 text-sm text-destructive">{err}</p>}
 
