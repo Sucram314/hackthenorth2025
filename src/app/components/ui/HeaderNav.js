@@ -7,7 +7,8 @@ export default function HeaderNav() {
       <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="inline-block size-3 rounded-sm bg-foreground" />
-          <span className="font-medium text-foreground">Toothrush</span>
+          {/* <span className="font-medium text-foreground">Toothrush</span> */}
+          <img src="/ToothRushBig.png" alt="Toothrush Logo" className="h-16 w-32 object-contain"/>
         </div>
         <nav className="flex items-center gap-8 text-sm">
           {/* <span className="text-muted-foreground hover:text-foreground cursor-default">Game 1</span>
