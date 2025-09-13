@@ -318,17 +318,20 @@ export default function GameCanvas({ playing }) {
       ctx.clearRect(0, 0, W, H);
 
       // bg
-      ctx.fillStyle = "#0a0a0a";
+      ctx.fillStyle = "#242424";
       ctx.fillRect(0, 0, W, H);
 
       // lanes
-      ctx.strokeStyle = "rgba(150,150,150,0.4)";
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
+      ctx.setLineDash([18, 18]); // 10px dash, 10px gap
       ctx.lineWidth = 2;
       ctx.beginPath();
+
       ctx.moveTo(0, S.laneH);
-      ctx.lineTo(W, S.laneH);
+      ctx.lineTo(W + 40, S.laneH);
+
       ctx.moveTo(0, S.laneH * 2);
-      ctx.lineTo(W, S.laneH * 2);
+      ctx.lineTo(W + 40, S.laneH * 2);
       ctx.stroke();
 
       // player
