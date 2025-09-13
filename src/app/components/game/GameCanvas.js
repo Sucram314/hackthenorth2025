@@ -48,11 +48,6 @@ export default function GameCanvas({ playing }) {
   const playerunhappy1 = useRef(null);
   const playerunhappy2 = useRef(null);
 
-  const playerhappy1 = useRef(null);
-  const playerhappy2 = useRef(null);
-  const playerunhappy1 = useRef(null);
-  const playerunhappy2 = useRef(null);
-
   useEffect(() => {
     laneRef.current = lane;
   }, [lane]);
