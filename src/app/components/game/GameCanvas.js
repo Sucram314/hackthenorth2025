@@ -521,14 +521,21 @@ export default function GameCanvas({ playing, onRestart }) {
 
       // collectibles
       for (const c of S.collectibles) {
-        const image = c.type === "good" ? coin1.current : candyCorn.current;
-        if (image) {
+        if (c.type === "good") {
           ctx.drawImage(
-            image,
+            coin1.current,
             c.x - c.size / 2,
-            c.y - c.size / 2,
+            c.y - c.size,
             c.size,
-            c.size
+            c.size*2
+          );
+        } else {
+          ctx.drawImage(
+            candyCorn.current,
+            c.x - c.size / 2,
+            c.y - c.size * 0.6,
+            c.size,
+            c.size * 1.2
           );
         }
       }
