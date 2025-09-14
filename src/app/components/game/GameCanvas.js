@@ -616,7 +616,7 @@ export default function GameCanvas({ playing, onRestart }) {
         ctx.textBaseline = "middle";
         music.pause();
         ctx.fillText("You did it!😁", W / 2, H / 2 - 40);
-        ctx.font = "bold 24px ui-sans-serif, system-ui, -apple-system";
+        ctx.font = "bold 24px 'Press Start 2P', ui-sans-serif, system-ui, -apple-system";
         ctx.fillText(`Final Score: ${score}`, W / 2, H / 2 + 20);
         ctx.textAlign = "left";
       }
