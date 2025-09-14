@@ -72,7 +72,7 @@ const WebcamGestureMP = forwardRef((props, ref) => {
   const brushingValue = useRef(0);
   const BRUSHING_DECAY = 0.5;
   const BRUSHING_IMPACT_FACTOR = 12;
-  const BRUSHING_VALUE_MAX = 2;
+  const BRUSHING_VALUE_MAX = 3;
   const SMOOTHING_ALPHA = 0.1;
   const smoothedImpact = useRef(0);
 
@@ -228,8 +228,17 @@ const WebcamGestureMP = forwardRef((props, ref) => {
       setLane(newLane);
 
       // depth-scaled “brushing”
-      const wristX = lm[0].x * c.width;
-      const wristZ = lm[0].z;
+
+      let Xsum = 0;
+      let Zsum = 0;
+
+      for(var i=0; i<21; ++i){
+        Xsum += lm[i].x;
+        Zsum += lm[i].z;
+      }
+
+      const wristX = Xsum * c.width / 21;
+      const wristZ = Zsum / 21;
       depthScale = Math.max(
         0.5,
         Math.min(

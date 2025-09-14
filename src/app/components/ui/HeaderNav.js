@@ -8,7 +8,7 @@ export default function HeaderNav() {
         <div className="flex items-center gap-2">
           <span className="inline-block size-3 rounded-sm bg-foreground" />
           {/* <span className="font-medium text-foreground">Toothrush</span> */}
-          <img src="/ToothRushBig.png" alt="Toothrush Logo" className="h-16 w-32 object-contain"/>
+          <img src="/ToothRushBig.png" alt="ToothRush Logo" className="h-16 w-32 object-contain"/>
         </div>
         <nav className="flex items-center gap-8 text-sm">
           {/* <span className="text-muted-foreground hover:text-foreground cursor-default">Game 1</span>
