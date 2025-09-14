@@ -17,7 +17,20 @@
 	},
 	"observability": {
 		"enabled": true
-	}
+	},
+	"routes": [
+    {
+      "pattern": "www.toothrush.win",
+      "custom_domain": true
+    },
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "toothrush",
+      "database_id": "affa862e-caab-495a-8085-6c70a032c903"
+    }
+  ]
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

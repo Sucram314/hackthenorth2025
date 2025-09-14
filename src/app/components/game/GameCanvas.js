@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useGesture, LANE } from "../gesture/GestureContext";
+import { addScore } from "../../services/db";
 
 // Vehicle image configuration - easily extensible
 const vehicleConfig = {
@@ -59,6 +60,7 @@ export default function GameCanvas({ playing, onRestart }) {
   const [candypickup] = useState(
     typeof Audio !== "undefined" && new Audio("candypickup.mp3")
   );
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     laneRef.current = lane;
@@ -127,6 +129,55 @@ export default function GameCanvas({ playing, onRestart }) {
   const [walkState, setWalkState] = useState(false);
   const [isUnhappy, setUnhappy] = useState(false);
   const [showRestartButton, setShowRestartButton] = useState(false);
+  const [inputValue, setInputValue] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+
+  const handleSubmit = useCallback(
+    async (e) => {
+      e.preventDefault();
+      if (!inputValue.trim() || submitting) return;
+
+      try {
+        setSubmitting(true);
+        setSubmitError("");
+        
+        // Create formatted date
+        const currentDate = new Date();
+        const formattedDate = `${currentDate.getFullYear()}/${String(
+          currentDate.getMonth() + 1
+        ).padStart(2, "0")}/${String(currentDate.getDate()).padStart(
+          2,
+          "0"
+        )} ${String(currentDate.getHours()).padStart(2, "0")}:${String(
+          currentDate.getMinutes()
+        ).padStart(2, "0")}`;
+
+        console.log("Submitting score:", {
+          name: inputValue.trim(),
+          score: score,
+          recordTime: formattedDate
+        });
+
+        const result = await addScore(inputValue.trim(), score, formattedDate);
+        
+        if (result.success) {
+          console.log("Score submitted successfully:", result.data);
+          setInputValue("");
+          setSubmitted(true);
+        } else {
+          console.error("Failed to submit score:", result.error);
+          setSubmitError(result.error || "Failed to submit score");
+        }
+      } catch (error) {
+        console.error("Error submitting score:", error);
+        setSubmitError("An error occurred while submitting your score");
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [inputValue, score, submitting]
+  );
 
   const obstacleSpec = useCallback(() => {
     // Use the vehicle configuration for consistent specs
@@ -233,11 +284,12 @@ export default function GameCanvas({ playing, onRestart }) {
   // Game start/restart function with timer lifecycle
   const startGame = useCallback(() => {
     setScore(0);
-    setTimeLeft(120);
+    setTimeLeft(0);
     setGameOver(false);
     setWalkState(false);
     setUnhappy(false);
     setShowRestartButton(false);
+    setSubmitted(false);
 
     // Reset game state
     const S = stateRef.current;
@@ -527,7 +579,7 @@ export default function GameCanvas({ playing, onRestart }) {
             c.x - c.size / 2,
             c.y - c.size,
             c.size,
-            c.size*2
+            c.size * 2
           );
         } else {
           ctx.drawImage(
@@ -615,9 +667,10 @@ export default function GameCanvas({ playing, onRestart }) {
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         music.pause();
-        ctx.fillText("You did it!😁", W / 2, H / 2 - 40);
-        ctx.font = "bold 24px 'Press Start 2P', ui-sans-serif, system-ui, -apple-system";
-        ctx.fillText(`Final Score: ${score}`, W / 2, H / 2 + 20);
+        ctx.fillText("You did it!😁", W / 2, H / 2 - 100);
+        ctx.font =
+          "bold 24px 'Press Start 2P', ui-sans-serif, system-ui, -apple-system";
+        ctx.fillText(`Final Score: ${score}`, W / 2, H / 2 - 40);
         ctx.textAlign = "left";
       }
     }
@@ -661,12 +714,65 @@ export default function GameCanvas({ playing, onRestart }) {
       />
       {showRestartButton && (
         <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl">
-          <button
-            onClick={handleRestart}
-            className="relative pixel-button top-1/4"
+          <form
+            onSubmit={handleSubmit}
+            className="flex flex-col items-center gap-4"
+            style={{ marginTop: "128px" }}
           >
-            Restart
-          </button>
+            {!submitted && (
+              <>
+                <input
+                  type="text"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder="Enter your name..."
+                  className="px-4 py-2 rounded focus:border-blue-500 focus:outline-none text-white bg-gray-800 border border-gray-600"
+                  style={{
+                    fontFamily: "'Press Start 2P', monospace",
+                    fontSize: "14px",
+                    textAlign: "center",
+                  }}
+                  disabled={submitting}
+                  autoFocus
+                />
+                {submitError && (
+                  <p className="text-red-400 text-sm text-center max-w-xs" style={{
+                    fontFamily: "'Press Start 2P', monospace",
+                    fontSize: "10px",
+                  }}>
+                    {submitError}
+                  </p>
+                )}
+              </>
+            )}
+            {submitted && (
+              <h2 className="text-green-400" style={{
+                fontFamily: "'Press Start 2P', monospace",
+                fontSize: "16px",
+              }}>
+                Score Submitted Successfully!
+              </h2>
+            )}
+
+            <div className="flex gap-4">
+              {!submitted && (
+                <button 
+                  type="submit" 
+                  className="relative pixel-button"
+                  disabled={submitting || !inputValue.trim()}
+                >
+                  {submitting ? "Submitting..." : "Submit Score"}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleRestart}
+                className="relative pixel-button"
+              >
+                Restart
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>
