@@ -1,36 +1,35 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+## Links
 
-## Getting Started
+Play the game: [https://www.toothrush.win]()  
+Devpost: [https://devpost.com/software/toothrush]()
 
-First, run the development server:
+## Inspiration
+Let's be honest, how many Hack the North participants actually brushed their teeth this weekend? Based on what we smelled... not enough.
+Two minutes spent mindlessly scrubbing your teeth feels like forever when you could be playing Subway Surfers instead.
+That's why we created ToothRush. Your teeth (and everyone sitting near you) will thank us later.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## What it does
+ToothRush is a game that you control through the physical act of brushing your teeth. The movement and position of your hand as you do so is tracked by a computer vision model. You play as an anthropomorphic tooth, running down a busy highway in the opposite direction of the flow of traffic. Your goal is to achieve the highest score possible within the span of two minutes - the amount of time most dentistry professionals recommend to allocate for each session of toothbrushing.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+You increase your score by collecting the tubes of toothpaste scattered on the road. You must avoid oncoming vehicles, which slow your progress, as well as pieces of candy, which will decrease your score. To accomplish this, you are able to jump between three lanes of traffic, controlled by the pitch of your hand. Your forward movement is directly tied to the speed in which you move your hand in a brushing motion. These mechanics are all designed to encourage thorough oral hygiene.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+Finally, there is a leaderboard so you can hold your peers accountable when you find out they didn't brush their teeth!
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## How we built it
+For our frontend, we utilize React in order to provide a performant and reactive interface. Our image detection is handled by MediaPipe, a suite of libraries and tools provided by Google for the implementation of AI techniques in applications. We utilize their hand landmark detection model, which is able to detect and render the landmarks of a human hand from an image. This model is efficient enough to run on-device, eliminating the need for an expensive backend. The app is hosted on Cloudflare, which provides improved speed, uptime, and security while giving us access to a rich developer platform for edge computing and analytics.
 
-## Learn More
+## Challenges we ran into
+The development of ToothRush was wrought with many conundrums. One such challenge was making the controls feel intuitive and reliable. Due to the inherently stochastic nature of AI and computer vision, we took great lengths to ensure that our movement system would be tolerant to inaccurate model detections.
 
-To learn more about Next.js, take a look at the following resources:
+## Accomplishments that we're proud of
+We're proud of creating a finished product out of an idea we once thought was unfeasible. Not only that, but we managed to create a fully polished game with our own assets and frontend design! Finally, our original system for detecting the pitch and brushing rate of the player went through many iterations, and we're proud of how accurate and precise it turned out in the end.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## What we learned
+The journey of ToothRush’s development taught us many lessons. We gained experience with the integration of machine learning libraries with web applications. We glimpsed the subtleties of the JavaScript Canvas API. We learnt of the power of vibe coding, along with its hidden toll in the form of endless refactoring. Most importantly of all, we realized that the real Hack the North was the friends we made along the way.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## What's next for ToothRush
+- Streak system or other in-game incentives for you to consistently brush your teeth
+- Better mobile support
+- Improving toothbrush orientation recognition for both manual and electric toothbrushes
+- More games and maps that teach you the proper technique for brushing
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
