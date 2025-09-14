@@ -1,7 +1,7 @@
 ## Links
 
-Play the game: [https://www.toothrush.win]()  
-Devpost: [https://devpost.com/software/toothrush]()
+Play the game: https://www.toothrush.win  
+Devpost: https://devpost.com/software/toothrush
 
 ## Inspiration
 Let's be honest, how many Hack the North participants actually brushed their teeth this weekend? Based on what we smelled... not enough.
