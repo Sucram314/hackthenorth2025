@@ -8,6 +8,7 @@ import HeaderNav from "@/app/components/ui/HeaderNav";
 import ControlsPanel from "@/app/components/ui/ControlsPanel";
 import GameCanvas from "@/app/components/game/GameCanvas";
 import WebcamGestureMP from "@/app/components/gesture/WebcamGestureMP";
+import Leaderboard from "@/app/components/ui/Leaderboard";
 
 function HomeInner() {
   const gestureContext = useGesture();
@@ -35,32 +36,42 @@ function HomeInner() {
   return (
     <>
       <HeaderNav />
-      <main className="mx-auto max-w-7xl px-6 py-8">
-        <div className="grid grid-cols-12 gap-6">
-          <section className="col-span-12 lg:col-span-8">
-            <div className="game-panel relative h-full ring-1 ring-border bg-card p-3">
-              <GameCanvas playing={playing} />
-              {live === false && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                  <button
-                    onClick={handleStartCamera}
-                    disabled={loading}
-                    className="pixel-button"
-                  >
-                    {loading ? "Loading…" : "Start Game"}
-                  </button>
-                </div>
-              )}
-            </div>
-          </section>
+      <main className="mx-auto max-w-7xl px-6 py-8 flex flex-col gap-8">
+        <div>
+          <h1>Game</h1>
+          <div className="grid grid-cols-12 gap-6">
+            <section className="col-span-12 lg:col-span-8">
+              <div className="game-panel relative h-full ring-1 ring-border bg-card p-3">
+                <GameCanvas playing={playing} />
+                {live === false && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                    <button
+                      onClick={handleStartCamera}
+                      disabled={loading}
+                      className="pixel-button"
+                    >
+                      {loading ? "Loading…" : "Start Game"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </section>
 
-          <section className="col-span-12 lg:col-span-4">
-            <ControlsPanel />
-            <div className="mt-6">
-              <WebcamGestureMP ref={webcamRef} />
-            </div>
-          </section>
+            <section className="col-span-12 lg:col-span-4">
+              <ControlsPanel />
+              <div className="mt-6">
+                <WebcamGestureMP ref={webcamRef} />
+              </div>
+            </section>
+          </div>
         </div>
+
+        <div>
+          <div className="w-full">
+            <Leaderboard currentScore={null} />
+          </div>
+        </div>
+
       </main>
     </>
   );
