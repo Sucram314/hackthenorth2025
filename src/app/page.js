@@ -41,7 +41,7 @@ function HomeInner() {
             <div className="game-panel relative h-full ring-1 ring-border bg-card p-3">
               <GameCanvas playing={playing} />
               {live === false && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-2xl">
+                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50">
                   <button
                     onClick={handleStartCamera}
                     disabled={loading}
