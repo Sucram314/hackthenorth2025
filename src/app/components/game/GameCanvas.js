@@ -284,7 +284,7 @@ export default function GameCanvas({ playing, onRestart }) {
   // Game start/restart function with timer lifecycle
   const startGame = useCallback(() => {
     setScore(0);
-    setTimeLeft(0);
+    setTimeLeft(120);
     setGameOver(false);
     setWalkState(false);
     setUnhappy(false);

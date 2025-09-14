@@ -68,7 +68,7 @@ function HomeInner() {
 
         <div>
           <div className="w-full">
-            <Leaderboard currentScore={null} />
+            <Leaderboard/>
           </div>
         </div>
 

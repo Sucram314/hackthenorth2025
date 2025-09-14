@@ -2,11 +2,7 @@
 import { useState, useEffect } from "react";
 import { getTopScores, addScore } from "../../services/db";
 
-export default function Leaderboard({
-  currentScore,
-  currentTime,
-  onScoreSubmitted,
-}) {
+export default function Leaderboard() {
   const [scores, setScores] = useState([]);
   const [loading, setLoading] = useState(true);
 
