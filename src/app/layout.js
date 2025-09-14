@@ -24,7 +24,7 @@ const pressStart = Press_Start_2P({
 });
 
 export const metadata = {
-  title: "Toothrush",
+  title: "ToothRush",
   description: "A game about brushing your teeth",
 };
 
